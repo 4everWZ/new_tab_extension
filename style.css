@@ -279,7 +279,7 @@ body::after {
     display: flex;
     flex-direction: column;
     align-items: center;
-    cursor: grab;
+    cursor: pointer;
     transition: transform 0.3s ease;
     text-decoration: none;
     color: white;
@@ -296,12 +296,29 @@ body::after {
     transform: scale(1.08);
 }
 
+.app-item.edit-mode {
+    cursor: grab;
+}
+
+.app-item.edit-mode:active,
+.app-item.dragging {
+    cursor: grabbing;
+}
+
 .app-item.dragging {
     opacity: 0.5;
 }
 
 .app-item.drag-over {
     transform: scale(1.1);
+}
+
+.icon-container {
+    position: relative;
+    width: fit-content;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .app-icon {
@@ -332,6 +349,40 @@ body::after {
 
 .app-item:hover .app-icon.with-animation {
     animation: none;
+}
+
+/* 删除按钮 */
+.delete-btn {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 32px;
+    height: 32px;
+    background: #ff4444;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    font-weight: bold;
+    color: white;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(255, 68, 68, 0.4);
+    transition: all 0.2s ease;
+    user-select: none;
+    opacity: 0;
+    transform: scale(0.8);
+}
+
+.app-item.edit-mode:hover .delete-btn {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.delete-btn:hover {
+    background: #ff2222;
+    box-shadow: 0 6px 16px rgba(255, 68, 68, 0.6);
+    transform: scale(1.1);
 }
 
 @keyframes iconFloat {

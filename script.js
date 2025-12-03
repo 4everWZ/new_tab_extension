@@ -83,6 +83,12 @@ let allApps = [];
 let settings = { ...defaultSettings };
 let currentSearchType = 'web';
 
+// 编辑模式
+let isEditMode = false;
+let editingItemIndex = null;
+let draggedItem = null;
+let draggedIndex = null;
+
 // DOM 元素
 const body = document.getElementById('body');
 const grid = document.getElementById('grid');
@@ -1196,20 +1202,6 @@ function applySettingsExceptMask() {
     body.style.setProperty('--text-color', settings.textColor);
 }
 
-// ==================== 删除快捷方式 ====================
-
-function deleteApp(index) {
-    allApps.splice(index, 1);
-    saveAppsToStorage();
-    
-    const maxPage = Math.ceil(allApps.length / pageSize) - 1;
-    if (currentPage > maxPage && currentPage > 0) {
-        currentPage = maxPage;
-    }
-    
-    render();
-}
-
 // ==================== 渲染页面 ====================
 
 function render() {
@@ -1225,46 +1217,42 @@ function renderGrid() {
     const pageApps = allApps.slice(start, end);
 
     pageApps.forEach((app, index) => {
+        const realIndex = start + index;
         const item = document.createElement('a');
-        item.href = app.url;
+        item.href = isEditMode ? 'javascript:void(0)' : app.url;
         item.className = 'app-item';
+        if (isEditMode) {
+            item.classList.add('edit-mode');
+        }
         item.target = '_self';
-        item.draggable = true;
-        item.dataset.index = start + index;
+        item.dataset.index = realIndex;
 
-        // 长按拖拽事件
-        let pressTimer = null;
-        item.addEventListener('mousedown', (e) => {
-            pressTimer = setTimeout(() => {
-                item.draggable = true;
-                // 模拟拖拽开始
-                item.style.cursor = 'grabbing';
-            }, 1000);
+        // 点击处理
+        item.addEventListener('click', (e) => {
+            if (isEditMode) {
+                e.preventDefault();
+            }
         });
 
-        item.addEventListener('mouseup', () => {
-            clearTimeout(pressTimer);
-            item.style.cursor = 'grab';
-        });
-
-        item.addEventListener('mouseleave', () => {
-            clearTimeout(pressTimer);
-            item.style.cursor = 'grab';
-        });
-
-        // 拖拽事件
-        item.addEventListener('dragstart', handleDragStart);
-        item.addEventListener('dragover', handleDragOver);
-        item.addEventListener('dragleave', handleDragLeave);
-        item.addEventListener('drop', handleDrop);
-        item.addEventListener('dragend', handleDragEnd);
-
-        // 右键菜单删除
+        // 右键进入编辑模式
         item.addEventListener('contextmenu', (e) => {
             e.preventDefault();
-            clearTimeout(pressTimer);
-            showContextMenu(e, start + index);
+            enterEditMode(realIndex);
         });
+
+        // 编辑模式下的拖拽
+        if (isEditMode) {
+            item.draggable = true;
+            item.addEventListener('dragstart', handleDragStart);
+            item.addEventListener('dragover', handleDragOver);
+            item.addEventListener('dragleave', handleDragLeave);
+            item.addEventListener('drop', handleDrop);
+            item.addEventListener('dragend', handleDragEnd);
+        }
+
+        // 创建图标容器
+        const iconContainer = document.createElement('div');
+        iconContainer.className = 'icon-container';
 
         // 创建图标
         const icon = document.createElement('div');
@@ -1283,6 +1271,20 @@ function renderGrid() {
             icon.innerText = app.text || app.name[0];
         }
 
+        iconContainer.appendChild(icon);
+
+        // 在编辑模式下添加删除按钮
+        if (isEditMode) {
+            const deleteBtn = document.createElement('div');
+            deleteBtn.className = 'delete-btn';
+            deleteBtn.innerHTML = '×';
+            deleteBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                deleteApp(realIndex);
+            });
+            iconContainer.appendChild(deleteBtn);
+        }
+
         // 创建名称
         const name = document.createElement('span');
         name.className = 'app-name';
@@ -1291,10 +1293,54 @@ function renderGrid() {
         }
         name.innerText = app.name;
 
-        item.appendChild(icon);
+        item.appendChild(iconContainer);
         item.appendChild(name);
         grid.appendChild(item);
     });
+}
+
+// 进入编辑模式
+function enterEditMode(index) {
+    isEditMode = true;
+    editingItemIndex = index;
+    renderGrid();
+    
+    // 添加全局点击事件监听，点击空白处退出编辑模式
+    document.addEventListener('click', exitEditModeOnClick, true);
+}
+
+// 点击空白处退出编辑模式
+function exitEditModeOnClick(e) {
+    // 如果点击的是grid内的item，不退出
+    const itemClicked = e.target.closest('.app-item');
+    if (itemClicked && grid.contains(itemClicked)) {
+        return;
+    }
+    // 点击其他地方则退出编辑模式
+    exitEditMode();
+}
+
+// 退出编辑模式
+function exitEditMode() {
+    isEditMode = false;
+    editingItemIndex = null;
+    document.removeEventListener('click', exitEditModeOnClick, true);
+    renderGrid();
+}
+
+// 删除应用
+function deleteApp(index) {
+    allApps.splice(index, 1);
+    saveAppsToStorage();
+    
+    // 如果当前页没有应用了，返回上一页
+    const totalPages = Math.ceil(allApps.length / pageSize);
+    if (currentPage >= totalPages) {
+        currentPage = Math.max(0, totalPages - 1);
+    }
+    
+    renderGrid();
+    renderPagination();
 }
 
 function renderPagination() {
@@ -1356,36 +1402,9 @@ function showContextMenu(e, appIndex) {
     deleteItem.addEventListener('mouseout', () => {
         deleteItem.style.background = '';
     });
-    deleteItem.addEventListener('click', () => {
-        deleteApp(appIndex);
-        document.body.removeChild(contextMenu);
-    });
-    
-    contextMenu.appendChild(deleteItem);
-    document.body.appendChild(contextMenu);
-    
-    // 点击其他地方时关闭菜单
-    const closeMenu = (event) => {
-        // 如果点击的是菜单本身，不关闭
-        if (!contextMenu.contains(event.target)) {
-            if (contextMenu.parentNode) {
-                document.body.removeChild(contextMenu);
-            }
-            document.removeEventListener('click', closeMenu);
-            document.removeEventListener('contextmenu', closeMenu);
-        }
-    };
-    
-    setTimeout(() => {
-        document.addEventListener('click', closeMenu);
-        document.addEventListener('contextmenu', closeMenu);
-    }, 0);
 }
 
 // ==================== 拖拽功能 ====================
-
-let draggedItem = null;
-let draggedIndex = null;
 
 function handleDragStart(e) {
     draggedItem = this;
@@ -1433,8 +1452,9 @@ function handleDrop(e) {
         // 保存到存储
         saveAppsToStorage();
         
-        // 重新渲染
-        render();
+        // 重新渲染（保持编辑模式）
+        renderGrid();
+        renderPagination();
     }
     
     return false;
