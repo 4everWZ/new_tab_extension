@@ -5,6 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>New Tab</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* 在settings加载前隐藏内容，避免闪烁 */
+        .container {
+            display: none;
+        }
+        .container.ready {
+            display: flex;
+        }
+    </style>
 </head>
 <body id="body" style="--mask-opacity: 0.45;">
     <!-- 壁纸换新按钮 -->
@@ -254,6 +263,11 @@
                         <label data-i18n="search_opacity">Search Opacity</label>
                         <input type="range" id="search-opacity" min="0" max="100" value="95">
                         <span id="search-opacity-value">95%</span>
+                    </div>
+                    <div class="setting-item">
+                        <label>Search Box Top Margin</label>
+                        <input type="range" id="search-top-margin" min="0" max="200" value="0">
+                        <span id="search-top-margin-value">0px</span>
                     </div>
                 </div>
 

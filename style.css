@@ -13,6 +13,7 @@ html, body {
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     display: flex;
+    flex-direction: column;
     justify-content: center;
     align-items: center;
     color: white;
@@ -96,8 +97,9 @@ body::after {
 /* 搜索框容器 */
 .search-box-wrapper {
     position: relative;
+    width: var(--search-width, 60%);
     max-width: 700px;
-    width: 100%;
+    min-width: 300px;
     margin: 0 auto;
 }
 
@@ -108,7 +110,7 @@ body::after {
     padding: calc(var(--search-height, 44px) * 0.15) calc(var(--search-height, 44px) * 0.35);
     display: flex;
     align-items: center;
-    width: var(--search-width-px, 420px);
+    width: 100%;
     height: var(--search-height, 44px);
     max-width: 700px;
     min-width: 300px;

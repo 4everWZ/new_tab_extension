@@ -70,6 +70,7 @@ const defaultSettings = {
     searchHeight: 44,
     searchRadius: 50,
     searchOpacity: 95,
+    searchTopMargin: 0,
     textShadow: true,
     textSize: 14,
     textColor: '#ffffff'
@@ -125,13 +126,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (index === 0) option.classList.add('active');
     });
     
-    loadData();
     setupSearch();
     setupSidebar();
     setupModal();
     setupSettingsModal();
-    applySettings();
-    render();
+    loadData();
 });
 
 // ==================== 数据存储 ====================
@@ -155,8 +154,11 @@ function loadData() {
         
         // 立即设置所有样式 - 包括遮罩、网格、搜索框等
         // 重要：在任何渲染之前完成所有样式设置
-        // 直接设置遮罩的 CSS 变量
         body.style.setProperty('--mask-opacity', settings.maskOpacity / 100);
+        body.style.setProperty('--search-width', settings.searchWidth + '%');
+        body.style.setProperty('--search-height', (settings.searchHeight || 44) + 'px');
+        body.style.setProperty('--search-radius', (settings.searchRadius || 50) + 'px');
+        body.style.setProperty('--search-opacity', settings.searchOpacity / 100);
         
         // 应用其他设置（但不设置遮罩，避免重复）
         applySettingsExceptMask();
@@ -185,7 +187,8 @@ function loadData() {
             loadWallpaper();
         }
         
-        // 立即渲染所有元素 - 没有延迟
+        // 所有准备就绪后，显示容器并渲染
+        document.querySelector('.container').classList.add('ready');
         render();
     });
 }
@@ -219,6 +222,8 @@ function saveAppsToStorage() {
 
 function saveSettingsToStorage() {
     chrome.storage.local.set({ settings });
+    // 只更新需要动态变化的样式
+    applySettings();
 }
 
 // ==================== 侧边栏功能 ====================
@@ -914,10 +919,12 @@ function setupSettingsModalUIValues() {
     document.getElementById('search-height').value = settings.searchHeight || 44;
     document.getElementById('search-radius').value = settings.searchRadius;
     document.getElementById('search-opacity').value = settings.searchOpacity;
+    document.getElementById('search-top-margin').value = settings.searchTopMargin || 0;
     document.getElementById('search-width-value').textContent = settings.searchWidth + '%';
     document.getElementById('search-radius-value').textContent = settings.searchRadius + 'px';
     document.getElementById('search-height-value').textContent = (settings.searchHeight || 44) + 'px';
     document.getElementById('search-opacity-value').textContent = settings.searchOpacity + '%';
+    document.getElementById('search-top-margin-value').textContent = (settings.searchTopMargin || 0) + 'px';
     
     // 壁纸设置
     document.getElementById('wallpaper-source').value = settings.wallpaperSource;
@@ -1106,6 +1113,13 @@ function setupSettingsModal() {
         applySettings();
     });
 
+    document.getElementById('search-top-margin').addEventListener('input', (e) => {
+        settings.searchTopMargin = parseInt(e.target.value);
+        document.getElementById('search-top-margin-value').textContent = settings.searchTopMargin + 'px';
+        saveSettingsToStorage();
+        applySettings();
+    });
+
     // 字体选项
     document.getElementById('text-shadow').addEventListener('change', (e) => {
         settings.textShadow = e.target.checked;
@@ -1170,9 +1184,7 @@ function applySettingsExceptMask() {
     } else {
         searchBox.classList.remove('hidden');
     }
-    // 将百分比转换为像素 (基准700px)
-    const searchWidthPx = Math.round((settings.searchWidth / 100) * 700);
-    body.style.setProperty('--search-width-px', searchWidthPx + 'px');
+    body.style.setProperty('--search-width', settings.searchWidth + '%');
     body.style.setProperty('--search-height', (settings.searchHeight || 44) + 'px');
     body.style.setProperty('--search-radius', (settings.searchRadius || 50) + 'px');
     body.style.setProperty('--search-opacity', settings.searchOpacity / 100);
