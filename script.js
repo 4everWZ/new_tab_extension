@@ -90,9 +90,6 @@ let editingItemIndex = null;
 let draggedItem = null;
 let draggedIndex = null;
 
-// 图标透明背景检测缓存
-let iconTransparencyCache = {};
-
 // DOM 元素
 const body = document.getElementById('body');
 const grid = document.getElementById('grid');
@@ -129,13 +126,8 @@ function getWallpaperUrl(storageResult) {
     return null;
 }
 
-// 检测图像是否有透明背景
-async function checkImageTransparency(imageUrl) {
-    // 检查缓存
-    if (iconTransparencyCache.hasOwnProperty(imageUrl)) {
-        return iconTransparencyCache[imageUrl];
-    }
-
+// 检测图像是否有透明背景（用于初始化时保存图标属性）
+function checkImageTransparency(imageUrl) {
     try {
         const img = new Image();
         img.crossOrigin = 'Anonymous';
@@ -160,13 +152,11 @@ async function checkImageTransparency(imageUrl) {
                     }
                 }
                 
-                iconTransparencyCache[imageUrl] = hasTransparency;
                 resolve(hasTransparency);
             };
             
             img.onerror = () => {
                 // 如果加载失败，假设没有透明背景
-                iconTransparencyCache[imageUrl] = false;
                 resolve(false);
             };
             
@@ -174,8 +164,7 @@ async function checkImageTransparency(imageUrl) {
         });
     } catch (e) {
         // 如果出错，假设没有透明背景
-        iconTransparencyCache[imageUrl] = false;
-        return false;
+        return Promise.resolve(false);
     }
 }
 
@@ -922,11 +911,17 @@ function addNewShortcut() {
                 if (!loaded) {
                     loaded = true;
                     newApp.img = faviconUrl;
-                    allApps.push(newApp);
-                    saveAppsToStorage();
-                    shortcutForm.reset();
-                    preview.classList.remove('show');
-                    render();
+                    newApp.iconType = 'icon';
+                    
+                    // 立即检测favicon的透明背景
+                    checkImageTransparency(faviconUrl).then(hasTransparency => {
+                        newApp.isTransparent = hasTransparency;
+                        allApps.push(newApp);
+                        saveAppsToStorage();
+                        shortcutForm.reset();
+                        preview.classList.remove('show');
+                        render();
+                    });
                 }
             };
             
@@ -1345,18 +1340,19 @@ function renderGrid() {
         if (app.iconType === 'icon' && app.img) {
             // 网络图标 - icon1 或 icon2
             icon.style.backgroundImage = `url(${app.img})`;
-            // 检测是否有透明背景，如果有则不添加背景色
-            checkImageTransparency(app.img).then(hasTransparency => {
-                if (!hasTransparency) {
-                    icon.style.backgroundColor = '#f0f0f0';
-                }
-            });
+            // 根据保存的透明度标记添加背景色
+            if (!app.isTransparent) {
+                icon.style.backgroundColor = '#f0f0f0';
+            }
             icon.style.backgroundSize = 'cover';
             icon.style.backgroundPosition = 'center';
         } else if (app.iconType === 'upload' && app.img) {
             // 上传的本地图标
             icon.style.backgroundImage = `url(${app.img})`;
-            icon.style.backgroundColor = app.color || '#ccc';
+            // 如果没有透明背景，添加颜色背景
+            if (!app.isTransparent) {
+                icon.style.backgroundColor = app.color || '#ccc';
+            }
             icon.style.backgroundSize = 'cover';
             icon.style.backgroundPosition = 'center';
         } else if (app.iconType === 'color') {
@@ -1638,33 +1634,11 @@ function editAppIcon(index) {
             iconPreview.innerText = textInput.value || app.text || app.name[0];
         } else if (selectedIconType === 'upload') {
             iconPreview.style.backgroundImage = `url(${imgInput.value || ''})`;
-            // 检测上传的图像是否有透明背景
-            if (imgInput.value) {
-                checkImageTransparency(imgInput.value).then(hasTransparency => {
-                    if (!hasTransparency) {
-                        iconPreview.style.backgroundColor = '#f0f0f0';
-                    } else {
-                        iconPreview.style.backgroundColor = 'transparent';
-                    }
-                });
-            } else {
-                iconPreview.style.backgroundColor = '#f0f0f0';
-            }
+            iconPreview.style.backgroundColor = '#f0f0f0';
             iconPreview.innerText = '';
         } else if (selectedIconType === 'icon') {
             iconPreview.style.backgroundImage = `url(${selectedFaviconUrl})`;
-            // 检测 favicon 是否有透明背景
-            if (selectedFaviconUrl) {
-                checkImageTransparency(selectedFaviconUrl).then(hasTransparency => {
-                    if (!hasTransparency) {
-                        iconPreview.style.backgroundColor = '#f0f0f0';
-                    } else {
-                        iconPreview.style.backgroundColor = 'transparent';
-                    }
-                });
-            } else {
-                iconPreview.style.backgroundColor = '#f0f0f0';
-            }
+            iconPreview.style.backgroundColor = '#f0f0f0';
             iconPreview.style.backgroundSize = 'cover';
             iconPreview.style.backgroundPosition = 'center';
             iconPreview.innerText = '';
@@ -1685,19 +1659,45 @@ function editAppIcon(index) {
             allApps[index].text = textInput.value || app.text || app.name[0];
             allApps[index].color = colorInput.value;
             allApps[index].img = '';
+            allApps[index].isTransparent = undefined;
+            saveAppsToStorage();
+            renderGrid();
+            document.body.removeChild(modal);
         } else if (selectedIconType === 'upload') {
             allApps[index].img = imgInput.value.trim() || '';
             allApps[index].text = '';
             allApps[index].color = '';
+            // 检测上传的图像透明度
+            if (allApps[index].img) {
+                checkImageTransparency(allApps[index].img).then(hasTransparency => {
+                    allApps[index].isTransparent = hasTransparency;
+                    saveAppsToStorage();
+                    renderGrid();
+                });
+            } else {
+                allApps[index].isTransparent = undefined;
+                saveAppsToStorage();
+                renderGrid();
+            }
+            document.body.removeChild(modal);
         } else if (selectedIconType === 'icon') {
             allApps[index].img = selectedFaviconUrl;
             allApps[index].text = '';
             allApps[index].color = '';
+            // 检测favicon的透明度
+            if (selectedFaviconUrl) {
+                checkImageTransparency(selectedFaviconUrl).then(hasTransparency => {
+                    allApps[index].isTransparent = hasTransparency;
+                    saveAppsToStorage();
+                    renderGrid();
+                });
+            } else {
+                allApps[index].isTransparent = undefined;
+                saveAppsToStorage();
+                renderGrid();
+            }
+            document.body.removeChild(modal);
         }
-        
-        saveAppsToStorage();
-        renderGrid();
-        document.body.removeChild(modal);
     });
 
     // 点击背景关闭
