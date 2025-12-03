@@ -1512,6 +1512,7 @@ function editAppIcon(index) {
         for (let i = 0; i < Math.min(faviconUrls.length, 2); i++) {
             const iconStyle = i === 0 ? 'icon1' : 'icon2';
             const isSelected = currentIconType === 'icon' && currentIconStyle === iconStyle;
+            // 新解析的favicon先不添加背景色，待用户选择后再检测
             iconOptionsHTML += `
                 <div class="icon-option" data-type="icon" data-style="${iconStyle}" data-url="${faviconUrls[i]}" style="padding: 12px; border: 2px solid ${isSelected ? '#4285F4' : '#ddd'}; border-radius: 8px; text-align: center; cursor: pointer; background: ${isSelected ? '#f0f7ff' : '#fff'};">
                     <div style="width: 60px; height: 60px; aspect-ratio: 1; border-radius: ${settings.iconRadius || 50}%; background-image: url(${faviconUrls[i]}); background-size: cover; background-position: center; margin: 0 auto 8px; border: 1px solid #eee;"></div>
@@ -1534,7 +1535,7 @@ function editAppIcon(index) {
         <h2 style="margin: 0 0 20px; font-size: 18px; color: #333;">编辑图标</h2>
         
         <div style="margin-bottom: 20px;">
-            <div style="width: 100px; height: 100px; aspect-ratio: 1; border-radius: ${settings.iconRadius || 50}%; background: ${app.color || '#ccc'}; margin: 0 auto 16px; background-image: url(${app.img || ''}); background-size: cover; background-position: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 32px;" id="icon-preview">
+            <div style="width: 100px; height: 100px; aspect-ratio: 1; border-radius: ${settings.iconRadius || 50}%; background: ${currentIconType === 'icon' && app.isTransparent ? 'transparent' : (app.color || '#ccc')}; margin: 0 auto 16px; background-image: url(${app.img || ''}); background-size: cover; background-position: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 32px;" id="icon-preview">
                 ${currentIconType === 'color' ? (app.text || app.name[0]) : ''}
             </div>
         </div>
@@ -1654,10 +1655,22 @@ function editAppIcon(index) {
             iconPreview.innerText = '';
         } else if (selectedIconType === 'icon') {
             iconPreview.style.backgroundImage = `url(${selectedFaviconUrl})`;
-            iconPreview.style.backgroundColor = '#f0f0f0';
             iconPreview.style.backgroundSize = 'cover';
             iconPreview.style.backgroundPosition = 'center';
             iconPreview.innerText = '';
+            
+            // 如果是已保存的图标，使用已有的透明度信息
+            if (selectedFaviconUrl === app.img && app.isTransparent !== undefined) {
+                iconPreview.style.backgroundColor = app.isTransparent ? 'transparent' : '#f0f0f0';
+            } else if (selectedFaviconUrl) {
+                // 新选择的favicon，动态检测透明度
+                iconPreview.style.backgroundColor = '#f0f0f0'; // 先显示默认背景
+                checkImageTransparency(selectedFaviconUrl).then(hasTransparency => {
+                    if (hasTransparency) {
+                        iconPreview.style.backgroundColor = 'transparent';
+                    }
+                });
+            }
         }
     }
 
