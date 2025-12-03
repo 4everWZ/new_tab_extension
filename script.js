@@ -1489,24 +1489,40 @@ function editAppIcon(index) {
         </div>
     `;
     
-    // 动态获取favicon作为icon1和icon2选项
-    const faviconUrls = getFaviconUrl(app.url);
+    // 获取网络图标选项
     let availableIconCount = 0;
     
-    // 只显示最多2个网络图标
-    for (let i = 0; i < Math.min(faviconUrls.length, 2); i++) {
-        const iconStyle = i === 0 ? 'icon1' : 'icon2';
-        const isSelected = currentIconType === 'icon' && currentIconStyle === iconStyle;
+    // 如果当前是网络图标，显示已保存的图标
+    if (currentIconType === 'icon' && app.img) {
+        const isSelected = currentIconType === 'icon';
+        // 判断是否有透明背景来决定是否显示背景色
+        const bgColor = app.isTransparent ? 'transparent' : '#f0f0f0';
         iconOptionsHTML += `
-            <div class="icon-option" data-type="icon" data-style="${iconStyle}" data-url="${faviconUrls[i]}" style="padding: 12px; border: 2px solid ${isSelected ? '#4285F4' : '#ddd'}; border-radius: 8px; text-align: center; cursor: pointer; background: ${isSelected ? '#f0f7ff' : '#fff'};">
-                <div style="width: 60px; height: 60px; aspect-ratio: 1; border-radius: ${settings.iconRadius || 50}%; background-image: url(${faviconUrls[i]}); background-size: cover; background-position: center; margin: 0 auto 8px; border: 1px solid #eee;"></div>
-                <div style="font-size: 12px; color: #666;">图标${String.fromCharCode(65 + i)}</div>
+            <div class="icon-option" data-type="icon" data-style="icon1" data-url="${app.img}" style="padding: 12px; border: 2px solid ${isSelected ? '#4285F4' : '#ddd'}; border-radius: 8px; text-align: center; cursor: pointer; background: ${isSelected ? '#f0f7ff' : '#fff'};">
+                <div style="width: 60px; height: 60px; aspect-ratio: 1; border-radius: ${settings.iconRadius || 50}%; background-image: url(${app.img}); background-color: ${bgColor}; background-size: cover; background-position: center; margin: 0 auto 8px; border: 1px solid #eee;"></div>
+                <div style="font-size: 12px; color: #666;">图标A</div>
             </div>
         `;
-        availableIconCount++;
+        availableIconCount = 1;
+    } else {
+        // 否则从URL重新解析favicon作为可选项
+        const faviconUrls = getFaviconUrl(app.url);
+        
+        // 只显示最多2个网络图标
+        for (let i = 0; i < Math.min(faviconUrls.length, 2); i++) {
+            const iconStyle = i === 0 ? 'icon1' : 'icon2';
+            const isSelected = currentIconType === 'icon' && currentIconStyle === iconStyle;
+            iconOptionsHTML += `
+                <div class="icon-option" data-type="icon" data-style="${iconStyle}" data-url="${faviconUrls[i]}" style="padding: 12px; border: 2px solid ${isSelected ? '#4285F4' : '#ddd'}; border-radius: 8px; text-align: center; cursor: pointer; background: ${isSelected ? '#f0f7ff' : '#fff'};">
+                    <div style="width: 60px; height: 60px; aspect-ratio: 1; border-radius: ${settings.iconRadius || 50}%; background-image: url(${faviconUrls[i]}); background-size: cover; background-position: center; margin: 0 auto 8px; border: 1px solid #eee;"></div>
+                    <div style="font-size: 12px; color: #666;">图标${String.fromCharCode(65 + i)}</div>
+                </div>
+            `;
+            availableIconCount++;
+        }
     }
     
-    // 如果没有网络图标，也显示上传选项
+    // 上传选项
     iconOptionsHTML += `
         <div class="icon-option" data-type="upload" style="padding: 12px; border: 2px solid ${currentIconType === 'upload' ? '#4285F4' : '#ddd'}; border-radius: 8px; text-align: center; cursor: pointer; background: ${currentIconType === 'upload' ? '#f0f7ff' : '#fff'};">
             <div style="width: 60px; height: 60px; aspect-ratio: 1; border-radius: ${settings.iconRadius || 50}%; background: #f0f0f0; margin: 0 auto 8px; display: flex; align-items: center; justify-content: center; color: #999; font-size: 24px;">📤</div>
@@ -1684,19 +1700,27 @@ function editAppIcon(index) {
             allApps[index].img = selectedFaviconUrl;
             allApps[index].text = '';
             allApps[index].color = '';
-            // 检测favicon的透明度
-            if (selectedFaviconUrl) {
+            
+            // 如果是已保存的图标URL，直接使用已有的透明度信息
+            if (selectedFaviconUrl === app.img && app.isTransparent !== undefined) {
+                allApps[index].isTransparent = app.isTransparent;
+                saveAppsToStorage();
+                renderGrid();
+                document.body.removeChild(modal);
+            } else if (selectedFaviconUrl) {
+                // 新选择的网络图标，需要检测透明度
                 checkImageTransparency(selectedFaviconUrl).then(hasTransparency => {
                     allApps[index].isTransparent = hasTransparency;
                     saveAppsToStorage();
                     renderGrid();
                 });
+                document.body.removeChild(modal);
             } else {
                 allApps[index].isTransparent = undefined;
                 saveAppsToStorage();
                 renderGrid();
+                document.body.removeChild(modal);
             }
-            document.body.removeChild(modal);
         }
     });
 
