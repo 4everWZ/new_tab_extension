@@ -351,7 +351,7 @@ body::after {
     animation: none;
 }
 
-/* 删除按钮 */
+/* 删除按钮 - 编辑模式下始终显示 */
 .delete-btn {
     position: absolute;
     top: -8px;
@@ -370,11 +370,6 @@ body::after {
     box-shadow: 0 4px 12px rgba(255, 68, 68, 0.4);
     transition: all 0.2s ease;
     user-select: none;
-    opacity: 0;
-    transform: scale(0.8);
-}
-
-.app-item.edit-mode:hover .delete-btn {
     opacity: 1;
     transform: scale(1);
 }
@@ -382,7 +377,51 @@ body::after {
 .delete-btn:hover {
     background: #ff2222;
     box-shadow: 0 6px 16px rgba(255, 68, 68, 0.6);
-    transform: scale(1.1);
+    transform: scale(1.15);
+}
+
+/* 编辑图标 - hover 时显示 */
+.edit-icon {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 40px;
+    height: 40px;
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+    font-size: 20px;
+}
+
+.app-item.edit-mode:hover .edit-icon {
+    opacity: 1;
+}
+
+/* 拖拽挤走动画 */
+@keyframes squeeze {
+    0% { transform: scale(1); }
+    50% { transform: scale(0.92); }
+    100% { transform: scale(1); }
+}
+
+@keyframes squeezeRotate {
+    0% { transform: scale(1) rotate(0deg); }
+    50% { transform: scale(0.92) rotate(2deg); }
+    100% { transform: scale(1) rotate(0deg); }
+}
+
+.app-item.drag-over {
+    animation: squeezeRotate 0.4s ease-in-out;
+}
+
+.app-item.drag-over .app-icon {
+    animation: squeeze 0.4s ease-in-out;
 }
 
 @keyframes iconFloat {

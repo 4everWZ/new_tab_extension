@@ -1273,8 +1273,19 @@ function renderGrid() {
 
         iconContainer.appendChild(icon);
 
-        // 在编辑模式下添加删除按钮
+        // 在编辑模式下添加删除按钮和编辑图标
         if (isEditMode) {
+            // 编辑图标 - hover 时显示
+            const editIcon = document.createElement('div');
+            editIcon.className = 'edit-icon';
+            editIcon.innerHTML = '✏️';
+            editIcon.addEventListener('click', (e) => {
+                e.preventDefault();
+                editAppIcon(realIndex);
+            });
+            iconContainer.appendChild(editIcon);
+
+            // 删除按钮 - 始终显示
             const deleteBtn = document.createElement('div');
             deleteBtn.className = 'delete-btn';
             deleteBtn.innerHTML = '×';
@@ -1292,6 +1303,7 @@ function renderGrid() {
             name.classList.add('hidden');
         }
         name.innerText = app.name;
+
 
         item.appendChild(iconContainer);
         item.appendChild(name);
@@ -1326,6 +1338,111 @@ function exitEditMode() {
     editingItemIndex = null;
     document.removeEventListener('click', exitEditModeOnClick, true);
     renderGrid();
+}
+
+// 编辑图标
+function editAppIcon(index) {
+    const app = allApps[index];
+    
+    // 创建编辑对话框
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+    `;
+
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+        background: white;
+        border-radius: 12px;
+        padding: 24px;
+        max-width: 400px;
+        width: 90%;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        animation: slideUp 0.3s ease-out;
+    `;
+
+    modalContent.innerHTML = `
+        <h2 style="margin: 0 0 20px; font-size: 18px; color: #333;">编辑图标</h2>
+        <div style="margin-bottom: 16px;">
+            <div style="width: 100px; height: 100px; border-radius: 50%; background: ${app.color || '#ccc'}; margin: 0 auto 16px; background-image: url(${app.img || ''}); background-size: cover; background-position: center;"></div>
+        </div>
+        <div style="margin-bottom: 16px;">
+            <label style="display: block; margin-bottom: 8px; color: #666; font-size: 14px;">网站URL</label>
+            <input type="text" id="edit-url" value="${app.url}" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 14px;">
+        </div>
+        <div style="margin-bottom: 16px;">
+            <label style="display: block; margin-bottom: 8px; color: #666; font-size: 14px;">名称</label>
+            <input type="text" id="edit-name" value="${app.name}" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 14px;">
+        </div>
+        <div style="margin-bottom: 20px;">
+            <label style="display: block; margin-bottom: 8px; color: #666; font-size: 14px;">图标URL (可选)</label>
+            <input type="text" id="edit-img" value="${app.img || ''}" placeholder="https://..." style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 14px;">
+        </div>
+        <div style="display: flex; gap: 12px;">
+            <button id="modal-cancel" style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px; background: #f5f5f5; cursor: pointer; font-size: 14px;">取消</button>
+            <button id="modal-save" style="flex: 1; padding: 10px; border: none; border-radius: 6px; background: #4285F4; color: white; cursor: pointer; font-size: 14px;">保存</button>
+        </div>
+    `;
+
+    // 添加动画样式
+    const style = document.createElement('style');
+    style.innerHTML = `
+        @keyframes slideUp {
+            from {
+                transform: translateY(30px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+    `;
+    document.head.appendChild(style);
+
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+
+    // 事件处理
+    const urlInput = modalContent.querySelector('#edit-url');
+    const nameInput = modalContent.querySelector('#edit-name');
+    const imgInput = modalContent.querySelector('#edit-img');
+    const cancelBtn = modalContent.querySelector('#modal-cancel');
+    const saveBtn = modalContent.querySelector('#modal-save');
+
+    cancelBtn.addEventListener('click', () => {
+        document.body.removeChild(modal);
+    });
+
+    saveBtn.addEventListener('click', () => {
+        allApps[index].url = urlInput.value.trim() || app.url;
+        allApps[index].name = nameInput.value.trim() || app.name;
+        allApps[index].img = imgInput.value.trim() || '';
+        
+        saveAppsToStorage();
+        renderGrid();
+        document.body.removeChild(modal);
+    });
+
+    // 点击背景关闭
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            document.body.removeChild(modal);
+        }
+    });
+
+    // 自动聚焦第一个输入框
+    urlInput.focus();
 }
 
 // 删除应用
