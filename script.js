@@ -74,7 +74,8 @@ const defaultSettings = {
     searchTopMargin: 0,
     textShadow: true,
     textSize: 14,
-    textColor: '#ffffff'
+    textColor: '#ffffff',
+    currentSearchEngine: 'google'
 };
 
 // 全局变量
@@ -170,11 +171,6 @@ function checkImageTransparency(imageUrl) {
 
 // 初始化
 document.addEventListener('DOMContentLoaded', () => {
-    // 初始化下拉菜单，设置第一个选项为active
-    document.querySelectorAll('.dropdown-option').forEach((option, index) => {
-        if (index === 0) option.classList.add('active');
-    });
-    
     setupSearch();
     setupSidebar();
     setupModal();
@@ -210,6 +206,11 @@ function loadData() {
         } else {
             settings = { ...defaultSettings };
             saveSettingsToStorage();
+        }
+        
+        // 恢复搜索引擎选择
+        if (settings.currentSearchEngine) {
+            currentSearchEngine = settings.currentSearchEngine;
         }
         
         // 立即设置所有样式 - 包括遮罩、网格、搜索框等
@@ -250,6 +251,16 @@ function loadData() {
         
         // 所有准备就绪后，显示容器并渲染
         document.querySelector('.container').classList.add('ready');
+        
+        // 设置搜索引擎的 active 状态
+        document.querySelectorAll('.dropdown-option').forEach(option => {
+            if (option.dataset.engine === currentSearchEngine) {
+                option.classList.add('active');
+            } else {
+                option.classList.remove('active');
+            }
+        });
+        
         render();
     });
 }
@@ -553,6 +564,7 @@ function setupSearch() {
             e.stopPropagation();
             const engine = option.dataset.engine;
             currentSearchEngine = engine;
+            settings.currentSearchEngine = engine;
             
             // 更新active状态
             document.querySelectorAll('.dropdown-option').forEach(opt => opt.classList.remove('active'));
@@ -561,6 +573,9 @@ function setupSearch() {
             updateSearchEngineIcon();
             searchEngineSelector.classList.remove('active');
             searchEngineDropdownMenu.classList.remove('show');
+            
+            // 保存设置
+            saveSettingsToStorage();
             
             // 获取焦点到搜索框
             searchInput.focus();
@@ -645,6 +660,7 @@ function setupSearch() {
             newOption.addEventListener('click', (e) => {
                 e.stopPropagation();
                 currentSearchEngine = engineKey;
+                settings.currentSearchEngine = engineKey;
                 
                 // 更新active状态
                 document.querySelectorAll('.dropdown-option').forEach(opt => opt.classList.remove('active'));
@@ -653,6 +669,9 @@ function setupSearch() {
                 updateSearchEngineIcon();
                 searchEngineSelector.classList.remove('active');
                 searchEngineDropdownMenu.classList.remove('show');
+                
+                // 保存设置
+                saveSettingsToStorage();
                 
                 searchInput.focus();
             });
@@ -678,9 +697,9 @@ function updateSearchEngineIcon() {
     if (iconData) {
         const searchEngineIcon = document.getElementById('search-engine-icon');
         searchEngineIcon.innerHTML = `
-            <svg class="icon-svg" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <svg class="icon-svg" viewBox="1 1 22 22" xmlns="http://www.w3.org/2000/svg" style="overflow: visible;">
                 <circle cx="12" cy="12" r="11" fill="${iconData.color}"/>
-                <text x="12" y="16" text-anchor="middle" font-size="16" font-weight="bold" font-family="Arial, sans-serif" fill="white">${iconData.text}</text>
+                <text x="12" y="12" text-anchor="middle" dominant-baseline="central" font-size="16" font-weight="bold" font-family="Arial, sans-serif" fill="white">${iconData.text}</text>
             </svg>
         `;
     }
