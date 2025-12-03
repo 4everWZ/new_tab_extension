@@ -1428,7 +1428,7 @@ function editAppIcon(index) {
     // 初始化图标选项HTML
     let iconOptionsHTML = `
         <div class="icon-option" data-type="color" style="padding: 12px; border: 2px solid ${currentIconType === 'color' ? '#4285F4' : '#ddd'}; border-radius: 8px; text-align: center; cursor: pointer; background: ${currentIconType === 'color' ? '#f0f7ff' : '#fff'};">
-            <div style="width: 60px; height: 60px; border-radius: ${settings.iconRadius || 50}%; background: ${app.color || '#fb7299'}; margin: 0 auto 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">
+            <div style="width: 60px; height: 60px; aspect-ratio: 1; border-radius: ${settings.iconRadius || 50}%; background: ${app.color || '#fb7299'}; margin: 0 auto 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">
                 ${app.text || app.name[0]}
             </div>
             <div style="font-size: 12px; color: #666;">纯色图标</div>
@@ -1445,7 +1445,7 @@ function editAppIcon(index) {
         const isSelected = currentIconType === 'icon' && currentIconStyle === iconStyle;
         iconOptionsHTML += `
             <div class="icon-option" data-type="icon" data-style="${iconStyle}" data-url="${faviconUrls[i]}" style="padding: 12px; border: 2px solid ${isSelected ? '#4285F4' : '#ddd'}; border-radius: 8px; text-align: center; cursor: pointer; background: ${isSelected ? '#f0f7ff' : '#fff'};">
-                <div style="width: 60px; height: 60px; border-radius: ${settings.iconRadius || 50}%; background-image: url(${faviconUrls[i]}); background-size: cover; background-position: center; margin: 0 auto 8px; border: 1px solid #eee;"></div>
+                <div style="width: 60px; height: 60px; aspect-ratio: 1; border-radius: ${settings.iconRadius || 50}%; background-image: url(${faviconUrls[i]}); background-size: cover; background-position: center; margin: 0 auto 8px; border: 1px solid #eee;"></div>
                 <div style="font-size: 12px; color: #666;">图标${String.fromCharCode(65 + i)}</div>
             </div>
         `;
@@ -1455,7 +1455,7 @@ function editAppIcon(index) {
     // 如果没有网络图标，也显示上传选项
     iconOptionsHTML += `
         <div class="icon-option" data-type="upload" style="padding: 12px; border: 2px solid ${currentIconType === 'upload' ? '#4285F4' : '#ddd'}; border-radius: 8px; text-align: center; cursor: pointer; background: ${currentIconType === 'upload' ? '#f0f7ff' : '#fff'};">
-            <div style="width: 60px; height: 60px; border-radius: ${settings.iconRadius || 50}%; background: #f0f0f0; margin: 0 auto 8px; display: flex; align-items: center; justify-content: center; color: #999; font-size: 24px;">📤</div>
+            <div style="width: 60px; height: 60px; aspect-ratio: 1; border-radius: ${settings.iconRadius || 50}%; background: #f0f0f0; margin: 0 auto 8px; display: flex; align-items: center; justify-content: center; color: #999; font-size: 24px;">📤</div>
             <div style="font-size: 12px; color: #666;">本地图标</div>
         </div>
     `;
