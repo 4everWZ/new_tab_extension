@@ -391,6 +391,8 @@ body::after {
     display: flex;
     align-items: center;
     justify-content: center;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 80%;
     opacity: 0;
     transition: opacity 0.2s ease;
     pointer-events: none;
@@ -404,7 +406,7 @@ body::after {
 }
 
 .edit-icon:hover {
-    filter: brightness(1.2);
+    background: rgba(0, 0, 0, 0.7);
 }
 
 /* 拖拽挤走动画 */

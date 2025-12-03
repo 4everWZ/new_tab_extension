@@ -1275,14 +1275,17 @@ function renderGrid() {
 
         // 在编辑模式下添加删除按钮和编辑图标
         if (isEditMode) {
-            // 编辑图标 - hover 时显示，使用SVG橙色铅笔
+            // 编辑图标 - hover 时显示，使用SVG灰色铅笔
             const editIcon = document.createElement('div');
             editIcon.className = 'edit-icon';
             editIcon.innerHTML = `
-                <svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-                    <rect x="8" y="30" width="32" height="4" rx="2" fill="#E8A87C"/>
-                    <path d="M36 12L12 36v4h4l24-24" fill="none" stroke="#FF9500" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-                    <rect x="10" y="14" width="20" height="20" transform="rotate(45 20 24)" fill="none" stroke="#FF9500" stroke-width="3"/>
+                <svg width="40" height="40" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+                    <!-- 铅笔笔身 -->
+                    <path d="M 10 38 L 14 34 L 34 14 L 38 10 L 38 10" stroke="#999999" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                    <!-- 铅笔橡皮 -->
+                    <rect x="6" y="34" width="6" height="10" fill="#AAAAAA" stroke="#999999" stroke-width="1"/>
+                    <!-- 铅笔芯 -->
+                    <path d="M 34 14 L 38 10" stroke="#666666" stroke-width="3" stroke-linecap="round"/>
                 </svg>
             `;
             editIcon.addEventListener('click', (e) => {
