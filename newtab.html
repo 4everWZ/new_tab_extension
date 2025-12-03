@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Tab</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body id="body" style="--mask-opacity: 0.45;">
+    <!-- 壁纸换新按钮 -->
+    <button class="wallpaper-refresh-btn" id="wallpaper-refresh-btn" title="Refresh wallpaper">🔄</button>
+
+    <!-- 右上角侧边栏打开/关闭按钮 -->
+    <button class="sidebar-toggle-btn" id="sidebar-toggle-btn" title="Settings">⚙️</button>
+
+    <div class="container">
+        <!-- 搜索类型选项卡 -->
+        <div class="search-types" id="search-types">
+            <button class="search-type-btn active" data-type="web" data-i18n="web">Web</button>
+            <button class="search-type-btn" data-type="images" data-i18n="images">Images</button>
+            <button class="search-type-btn" data-type="news" data-i18n="news">News</button>
+            <button class="search-type-btn" data-type="video" data-i18n="video">Video</button>
+            <button class="search-type-btn" data-type="maps" data-i18n="maps">Maps</button>
+        </div>
+
+        <!-- 搜索框 -->
+        <div class="search-box-wrapper">
+            <div class="search-box">
+                <div class="search-engine-selector">
+                    <div class="search-engine-icon" id="search-engine-icon">
+                        <svg class="icon-svg" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="12" cy="12" r="11" fill="#4285F4"/>
+                            <text x="12" y="16" text-anchor="middle" font-size="14" font-weight="bold" font-family="Arial, sans-serif" fill="white">G</text>
+                        </svg>
+                    </div>
+                    <div class="search-engine-dropdown-toggle"></div>
+                </div>
+                <input type="text" id="search-input" placeholder="输入并搜索" autofocus>
+            </div>
+            <!-- 自定义下拉菜单 -->
+            <div class="search-engine-dropdown-menu" id="search-engine-dropdown-menu">
+                <div class="dropdown-options">
+                    <div class="dropdown-option" data-engine="google">
+                        <svg class="dropdown-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="12" cy="12" r="11" fill="#4285F4"/>
+                            <text x="12" y="16" text-anchor="middle" font-size="14" font-weight="bold" font-family="Arial" fill="white">G</text>
+                        </svg>
+                        <span>Google</span>
+                    </div>
+                    <div class="dropdown-option" data-engine="bing">
+                        <svg class="dropdown-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="12" cy="12" r="11" fill="#00A4EF"/>
+                            <text x="12" y="16" text-anchor="middle" font-size="14" font-weight="bold" font-family="Arial" fill="white">B</text>
+                        </svg>
+                        <span>Bing</span>
+                    </div>
+                    <div class="dropdown-option" data-engine="baidu">
+                        <svg class="dropdown-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="12" cy="12" r="11" fill="#FF6B2B"/>
+                            <text x="12" y="16" text-anchor="middle" font-size="14" font-weight="bold" font-family="Arial" fill="white">百</text>
+                        </svg>
+                        <span>Baidu</span>
+                    </div>
+                </div>
+                <div class="dropdown-divider"></div>
+                <div class="dropdown-add">
+                    <span>+ 添加搜索引擎</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid-wrapper">
+            <div class="grid-container" id="grid"></div>
+        </div>
+
+        <div class="pagination" id="pagination"></div>
+    </div>
+
+    <!-- 右侧侧边栏 -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-tabs">
+                <button class="sidebar-tab active" data-tab="add" id="add-tab">
+                    <span class="tab-icon">➕</span>
+                    <span class="tab-text">Add</span>
+                </button>
+                <button class="sidebar-tab" data-tab="settings" id="settings-tab">
+                    <span class="tab-icon">⚙️</span>
+                    <span class="tab-text">Settings</span>
+                </button>
+            </div>
+            <button class="sidebar-close-btn" id="sidebar-close-btn">×</button>
+        </div>
+
+        <div class="sidebar-content">
+            <!-- 添加快捷方式面板 -->
+            <div class="tab-panel active" id="add-panel">
+                <h3 data-i18n="add_shortcut">Add Shortcut</h3>
+                <form id="shortcut-form">
+                    <div class="form-group">
+                        <label data-i18n="name">Name</label>
+                        <input type="text" id="app-name" placeholder="Website name" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label data-i18n="url">URL</label>
+                        <div style="display: flex; gap: 8px;">
+                            <input type="url" id="app-url" placeholder="https://example.com" required style="flex: 1;">
+                            <button type="button" id="parse-url-btn" class="btn-primary" style="flex: 0 0 auto; width: auto; padding: 8px 16px;" data-i18n="parse_url">Parse</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label data-i18n="icon_type">Icon Type</label>
+                        <div class="icon-options">
+                            <label>
+                                <input type="radio" name="icon-type" value="text" checked> <span data-i18n="text">Text</span>
+                            </label>
+                            <label>
+                                <input type="radio" name="icon-type" value="upload"> <span data-i18n="image">Image</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div id="text-icon-options" class="icon-section">
+                        <div class="form-group">
+                            <label data-i18n="icon_text">Icon Text</label>
+                            <input type="text" id="app-text" placeholder="B" maxlength="2">
+                        </div>
+                        <div class="form-group">
+                            <label data-i18n="color">Color</label>
+                            <input type="color" id="app-color" value="#0084ff">
+                        </div>
+                    </div>
+
+                    <div id="upload-icon-options" class="icon-section hidden">
+                        <div class="form-group">
+                            <label data-i18n="upload_image">Upload Image</label>
+                            <input type="file" id="app-image" accept="image/*">
+                        </div>
+                        <div id="image-preview"></div>
+                    </div>
+
+                    <button type="submit" class="btn-primary" data-i18n="save">Save</button>
+                    <button type="reset" class="btn-secondary" data-i18n="clear">Clear</button>
+                </form>
+            </div>
+
+            <!-- 设置面板 -->
+            <div class="tab-panel" id="settings-panel">
+                <h3 data-i18n="settings">Settings</h3>
+
+                <div class="settings-section">
+                    <h4 data-i18n="wallpaper">Wallpaper</h4>
+                    <div class="setting-item">
+                        <label data-i18n="wallpaper_source">Wallpaper Source</label>
+                        <select id="wallpaper-source">
+                            <option value="local" data-i18n="local_upload">Local Upload</option>
+                            <option value="bing">Bing</option>
+                            <option value="google">Google</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <button type="button" id="wallpaper-upload-btn" class="btn-primary" data-i18n="upload">Upload</button>
+                        <input type="file" id="wallpaper-file" accept="image/*" style="display:none;">
+                    </div>
+                    <div class="setting-item">
+                        <label data-i18n="mask_opacity">Mask Opacity</label>
+                        <input type="range" id="mask-opacity" min="0" max="100" value="45">
+                        <span id="mask-opacity-value">45%</span>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h4 data-i18n="layout">Layout</h4>
+                    <div class="setting-item">
+                        <label data-i18n="grid_cols">Grid Columns</label>
+                        <div class="grid-preset-options">
+                            <button type="button" class="grid-preset" data-cols="4">2x4</button>
+                            <button type="button" class="grid-preset" data-cols="5">2x5</button>
+                            <button type="button" class="grid-preset" data-cols="6">2x6</button>
+                            <button type="button" class="grid-preset" data-cols="7">2x7</button>
+                            <button type="button" class="grid-preset" data-cols="3">3x3</button>
+                            <button type="button" class="grid-preset" data-cols="custom" data-i18n="custom">Custom</button>
+                        </div>
+                    </div>
+                    <div class="setting-item hidden" id="custom-cols-item">
+                        <label data-i18n="custom_cols">Custom Columns</label>
+                        <input type="number" id="custom-cols" min="2" max="10" value="6">
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h4 data-i18n="icon">Icon</h4>
+                    <div class="setting-item">
+                        <label>
+                            <input type="checkbox" id="show-icon-label">
+                            <span data-i18n="hide_icon_label">Hide Icon Label</span>
+                        </label>
+                    </div>
+                    <div class="setting-item">
+                        <label>
+                            <input type="checkbox" id="icon-shadow" checked>
+                            <span data-i18n="icon_shadow">Icon Shadow</span>
+                        </label>
+                    </div>
+                    <div class="setting-item">
+                        <label>
+                            <input type="checkbox" id="icon-animation" checked>
+                            <span data-i18n="animation">Animation</span>
+                        </label>
+                    </div>
+                    <div class="setting-item">
+                        <label data-i18n="icon_radius">Icon Radius</label>
+                        <input type="range" id="icon-radius" min="0" max="100" value="50">
+                        <span id="radius-value">50%</span>
+                    </div>
+                    <div class="setting-item">
+                        <label data-i18n="icon_opacity">Icon Opacity</label>
+                        <input type="range" id="icon-opacity" min="0" max="100" value="100">
+                        <span id="opacity-value">100%</span>
+                    </div>
+                    <div class="setting-item">
+                        <label data-i18n="icon_size">Icon Size</label>
+                        <input type="range" id="icon-size" min="30" max="150" value="90">
+                        <span id="size-value">60%</span>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h4 data-i18n="search_box">Search Box</h4>
+                    <div class="setting-item">
+                        <label>
+                            <input type="checkbox" id="hide-search-bar">
+                            <span data-i18n="hide_search">Hide Search Box</span>
+                        </label>
+                    </div>
+                    <div class="setting-item">
+                        <label data-i18n="search_width">Search Width</label>
+                        <input type="range" id="search-width" min="10" max="100" value="60">
+                        <span id="search-width-value">60%</span>
+                    </div>
+                    <div class="setting-item">
+                        <label data-i18n="search_height">Search Height</label>
+                        <input type="range" id="search-height" min="20" max="80" value="44">
+                        <span id="search-height-value">44px</span>
+                    </div>
+                    <div class="setting-item">
+                        <label data-i18n="search_radius">Search Radius</label>
+                        <input type="range" id="search-radius" min="10" max="100" value="50">
+                        <span id="search-radius-value">50%</span>
+                    </div>
+                    <div class="setting-item">
+                        <label data-i18n="search_opacity">Search Opacity</label>
+                        <input type="range" id="search-opacity" min="0" max="100" value="95">
+                        <span id="search-opacity-value">95%</span>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h4 data-i18n="font">Font</h4>
+                    <div class="setting-item">
+                        <label>
+                            <input type="checkbox" id="text-shadow" checked>
+                            <span data-i18n="text_shadow">Text Shadow</span>
+                        </label>
+                    </div>
+                    <div class="setting-item">
+                        <label data-i18n="text_size">Font Size</label>
+                        <input type="range" id="text-size" min="8" max="24" value="14">
+                        <span id="text-size-value">14px</span>
+                    </div>
+                    <div class="setting-item">
+                        <label data-i18n="text_color">Font Color</label>
+                        <div class="color-palette">
+                            <button type="button" class="color-btn" data-color="#999999" style="background-color: #999999;"></button>
+                            <button type="button" class="color-btn" data-color="#ef5350" style="background-color: #ef5350;"></button>
+                            <button type="button" class="color-btn" data-color="#ffa726" style="background-color: #ffa726;"></button>
+                            <button type="button" class="color-btn" data-color="#ffee58" style="background-color: #ffee58;"></button>
+                            <button type="button" class="color-btn" data-color="#66bb6a" style="background-color: #66bb6a;"></button>
+                            <button type="button" class="color-btn" data-color="#29b6f6" style="background-color: #29b6f6;"></button>
+                            <button type="button" class="color-btn" data-color="#5c6bc0" style="background-color: #5c6bc0;"></button>
+                            <button type="button" class="color-btn" data-color="#ab47bc" style="background-color: #ab47bc;"></button>
+                            <button type="button" class="color-btn" data-color="#ffffff" style="background-color: #ffffff; border: 1px solid #ccc;"></button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h4 data-i18n="language">Language</h4>
+                    <div class="setting-item">
+                        <select id="language-select">
+                            <option value="zh">中文</option>
+                            <option value="en">English</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="i18n.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

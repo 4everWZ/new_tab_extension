@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "My Safe New Tab",
+  "version": "1.0",
+  "description": "简约、本地、无联网的自用新标签页",
+  "chrome_url_overrides": {
+    "newtab": "newtab.html"
+  },
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://www.bing.com/*",
+    "https://www.google.com/*",
+    "https://images.unsplash.com/*"
+  ],
+  "icons": {
+    "128": "icon.png"
+  }
+}
