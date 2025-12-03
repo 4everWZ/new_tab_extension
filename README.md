@@ -59,7 +59,6 @@ new_tab_extension/
 ├── style.css             # 样式表（813 行）
 ├── script.js             # 逻辑脚本（1400+ 行）
 ├── README.md             # 本文件
-└── 思路.md               # 开发思路文档
 ```
 
 ## 🎯 核心特性详解
