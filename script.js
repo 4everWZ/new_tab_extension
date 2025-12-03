@@ -1280,9 +1280,11 @@ function renderGrid() {
             editIcon.className = 'edit-icon';
             editIcon.innerHTML = '✏️';
             editIcon.addEventListener('click', (e) => {
+                e.stopPropagation();
                 e.preventDefault();
                 editAppIcon(realIndex);
             });
+            iconContainer.appendChild(editIcon);
             iconContainer.appendChild(editIcon);
 
             // 删除按钮 - 始终显示
