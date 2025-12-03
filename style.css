@@ -279,13 +279,17 @@ body::after {
     display: flex;
     flex-direction: column;
     align-items: center;
-    cursor: pointer;
+    cursor: grab;
     transition: transform 0.3s ease;
     text-decoration: none;
     color: white;
     position: relative;
     text-align: center;
-    cursor: move;
+    user-select: none;
+}
+
+.app-item:active {
+    cursor: grabbing;
 }
 
 .app-item:hover {

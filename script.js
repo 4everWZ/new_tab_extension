@@ -1232,6 +1232,26 @@ function renderGrid() {
         item.draggable = true;
         item.dataset.index = start + index;
 
+        // 长按拖拽事件
+        let pressTimer = null;
+        item.addEventListener('mousedown', (e) => {
+            pressTimer = setTimeout(() => {
+                item.draggable = true;
+                // 模拟拖拽开始
+                item.style.cursor = 'grabbing';
+            }, 1000);
+        });
+
+        item.addEventListener('mouseup', () => {
+            clearTimeout(pressTimer);
+            item.style.cursor = 'grab';
+        });
+
+        item.addEventListener('mouseleave', () => {
+            clearTimeout(pressTimer);
+            item.style.cursor = 'grab';
+        });
+
         // 拖拽事件
         item.addEventListener('dragstart', handleDragStart);
         item.addEventListener('dragover', handleDragOver);
@@ -1242,6 +1262,7 @@ function renderGrid() {
         // 右键菜单删除
         item.addEventListener('contextmenu', (e) => {
             e.preventDefault();
+            clearTimeout(pressTimer);
             showContextMenu(e, start + index);
         });
 
