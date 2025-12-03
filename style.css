@@ -153,8 +153,8 @@ body::after {
 }
 
 .search-engine-icon {
-    width: calc(var(--search-height, 44px) * 0.6);
-    height: calc(var(--search-height, 44px) * 0.6);
+    width: calc(var(--search-height, 44px) * 0.75);
+    height: calc(var(--search-height, 44px) * 0.75);
     flex-shrink: 0;
     display: flex;
     align-items: center;

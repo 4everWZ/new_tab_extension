@@ -680,7 +680,7 @@ function updateSearchEngineIcon() {
         searchEngineIcon.innerHTML = `
             <svg class="icon-svg" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 <circle cx="12" cy="12" r="11" fill="${iconData.color}"/>
-                <text x="12" y="16" text-anchor="middle" font-size="14" font-weight="bold" font-family="Arial, sans-serif" fill="white">${iconData.text}</text>
+                <text x="12" y="16" text-anchor="middle" font-size="16" font-weight="bold" font-family="Arial, sans-serif" fill="white">${iconData.text}</text>
             </svg>
         `;
     }
