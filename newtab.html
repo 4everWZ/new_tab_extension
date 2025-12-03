@@ -15,7 +15,7 @@
         }
     </style>
 </head>
-<body id="body" style="--mask-opacity: 0.45;">
+<body id="body" style="--mask-opacity: 0.45; --wallpaper-blur: 0;">
     <!-- 壁纸换新按钮 -->
     <button class="wallpaper-refresh-btn" id="wallpaper-refresh-btn" title="Refresh wallpaper">🔄</button>
 
@@ -177,6 +177,11 @@
                         <label data-i18n="mask_opacity">Mask Opacity</label>
                         <input type="range" id="mask-opacity" min="0" max="100" value="45">
                         <span id="mask-opacity-value">45%</span>
+                    </div>
+                    <div class="setting-item">
+                        <label data-i18n="wallpaper_blur">Wallpaper Blur</label>
+                        <input type="range" id="wallpaper-blur" min="0" max="100" value="0">
+                        <span id="wallpaper-blur-value">0%</span>
                     </div>
                 </div>
 

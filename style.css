@@ -26,7 +26,7 @@ body {
     transition: none;
 }
 
-/* 壁纸伪元素 - 显示壁纸背景 */
+/* 壁纸伪元素 - 显示壁纸背景 (带模糊效果) */
 body::before {
     content: '';
     position: absolute;
@@ -40,9 +40,11 @@ body::before {
     background-attachment: fixed;
     z-index: -2;
     pointer-events: none;
+    filter: blur(calc(var(--wallpaper-blur, 0) * 0.2px));
+    transition: filter 0.3s ease;
 }
 
-/* 独立的遮罩层 - 控制壁纸的覆盖程度 */
+/* 独立的遮罩层 - 控制壁纸的覆盖程度 (黑色遮罩) */
 body::after {
     content: '';
     position: absolute;
@@ -50,10 +52,11 @@ body::after {
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: rgba(255, 255, 255, var(--mask-opacity));
+    /* 使用黑色半透明遮罩，与 Infinity 保持一致 */
+    background-color: rgba(0, 0, 0, var(--mask-opacity, 0.45));
     z-index: -1;
     pointer-events: none;
-    transition: none;
+    transition: background-color 0.3s ease;
 }
 
 /* 容器 */
@@ -356,10 +359,10 @@ body::after {
     position: absolute;
     top: -8px;
     right: -8px;
-    width: 32px;
-    height: 32px;
+    width: 40px;
+    height: 40px;
     background: #ff4444;
-    border-radius: 50%;
+    border-radius: 80%;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -383,11 +386,11 @@ body::after {
 /* 编辑图标 - hover 时显示，覆盖整个图标 */
 .edit-icon {
     position: absolute;
-    top: 50%;
+    top: 43.5%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 60px;
-    height: 60px;
+    width: 100px;
+    height: 100px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -406,7 +409,7 @@ body::after {
 }
 
 .edit-icon:hover {
-    background: rgba(0, 0, 0, 0.7);
+    background: rgba(0, 0, 0, 0.45);
 }
 
 /* 拖拽挤走动画 */

@@ -48,16 +48,17 @@ const searchEngines = {
 
 // 默认快捷方式
 const defaultApps = [
-    { name: "Bilibili", url: "https://www.bilibili.com", color: "#fb7299", text: "B" },
-    { name: "GitHub", url: "https://github.com", color: "#24292e", text: "G" },
-    { name: "Stack Overflow", url: "https://stackoverflow.com", color: "#f48024", text: "SO" },
-    { name: "MDN", url: "https://developer.mozilla.org", color: "#000", text: "MDN" },
+    { name: "Bilibili", url: "https://www.bilibili.com", color: "#fb7299", text: "B", iconType: "color" },
+    { name: "GitHub", url: "https://github.com", color: "#24292e", text: "G", iconType: "color" },
+    { name: "Stack Overflow", url: "https://stackoverflow.com", color: "#f48024", text: "SO", iconType: "color" },
+    { name: "MDN", url: "https://developer.mozilla.org", color: "#000", text: "MDN", iconType: "color" },
 ];
 
 // 默认设置
 const defaultSettings = {
     wallpaperSource: 'local',
     maskOpacity: 45,
+    wallpaperBlur: 0,
     gridCols: 6,
     showIconLabel: false,
     iconShadow: true,
@@ -146,6 +147,17 @@ function loadData() {
         // 加载数据
         if (result.apps && result.apps.length > 0) {
             allApps = result.apps;
+            // 数据迁移：为旧应用添加 iconType 属性
+            let needSave = false;
+            allApps.forEach(app => {
+                if (!app.iconType) {
+                    app.iconType = app.img ? 'upload' : 'color';
+                    needSave = true;
+                }
+            });
+            if (needSave) {
+                saveAppsToStorage();
+            }
         } else {
             allApps = JSON.parse(JSON.stringify(defaultApps));
             saveAppsToStorage();
@@ -161,6 +173,7 @@ function loadData() {
         // 立即设置所有样式 - 包括遮罩、网格、搜索框等
         // 重要：在任何渲染之前完成所有样式设置
         body.style.setProperty('--mask-opacity', settings.maskOpacity / 100);
+        body.style.setProperty('--wallpaper-blur', settings.wallpaperBlur || 0);
         body.style.setProperty('--search-width', settings.searchWidth + '%');
         body.style.setProperty('--search-height', (settings.searchHeight || 44) + 'px');
         body.style.setProperty('--search-radius', (settings.searchRadius || 50) + 'px');
@@ -796,7 +809,7 @@ function addNewShortcut() {
 
     if (!name || !url) return;
 
-    const newApp = { name, url };
+    const newApp = { name, url, iconType: 'color' };
 
     if (iconType === 'text') {
         newApp.text = document.getElementById('app-text').value.trim() || name[0];
@@ -812,6 +825,7 @@ function addNewShortcut() {
         // 优先使用用户上传的图片
         if (preview.dataset.imageData) {
             newApp.img = preview.dataset.imageData;
+            newApp.iconType = 'upload';
             allApps.push(newApp);
             saveAppsToStorage();
             shortcutForm.reset();
@@ -936,6 +950,8 @@ function setupSettingsModalUIValues() {
     document.getElementById('wallpaper-source').value = settings.wallpaperSource;
     document.getElementById('mask-opacity').value = settings.maskOpacity;
     document.getElementById('mask-opacity-value').textContent = settings.maskOpacity + '%';
+    document.getElementById('wallpaper-blur').value = settings.wallpaperBlur || 0;
+    document.getElementById('wallpaper-blur-value').textContent = (settings.wallpaperBlur || 0) + '%';
     
     // 文字设置
     document.getElementById('text-size').value = settings.textSize;
@@ -1000,6 +1016,14 @@ function setupSettingsModal() {
     document.getElementById('mask-opacity').addEventListener('input', (e) => {
         settings.maskOpacity = parseInt(e.target.value);
         document.getElementById('mask-opacity-value').textContent = settings.maskOpacity + '%';
+        saveSettingsToStorage();
+        applySettings();
+    });
+
+    // 壁纸模糊度
+    document.getElementById('wallpaper-blur').addEventListener('input', (e) => {
+        settings.wallpaperBlur = parseInt(e.target.value);
+        document.getElementById('wallpaper-blur-value').textContent = settings.wallpaperBlur + '%';
         saveSettingsToStorage();
         applySettings();
     });
@@ -1163,8 +1187,9 @@ function setupSettingsModal() {
 // ==================== 应用设置 ====================
 
 function applySettings() {
-    // 壁纸遮罩 - 仅在用户改变设置时生效
+    // 壁纸遮罩和模糊 - 仅在用户改变设置时生效
     body.style.setProperty('--mask-opacity', settings.maskOpacity / 100);
+    body.style.setProperty('--wallpaper-blur', settings.wallpaperBlur || 0);
     applySettingsExceptMask();
 }
 
@@ -1264,8 +1289,19 @@ function renderGrid() {
             icon.classList.add('with-animation');
         }
 
-        if (app.img) {
+        if (app.iconType === 'icon' && app.iconStyle === 'icon1') {
+            // 图标01 - 紫蓝渐变
+            icon.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+            icon.style.color = 'white';
+            icon.innerText = '📦';
+        } else if (app.iconType === 'icon' && app.iconStyle === 'icon2') {
+            // 图标02 - 粉红渐变
+            icon.style.background = 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)';
+            icon.style.color = 'white';
+            icon.innerText = '🎨';
+        } else if (app.img) {
             icon.style.backgroundImage = `url(${app.img})`;
+            icon.style.backgroundColor = app.color || '#ccc';
         } else {
             icon.style.backgroundColor = app.color || '#ccc';
             icon.innerText = app.text || app.name[0];
@@ -1368,6 +1404,7 @@ function editAppIcon(index) {
         align-items: center;
         justify-content: center;
         z-index: 10000;
+        overflow-y: auto;
     `;
 
     const modalContent = document.createElement('div');
@@ -1375,29 +1412,69 @@ function editAppIcon(index) {
         background: white;
         border-radius: 12px;
         padding: 24px;
-        max-width: 400px;
+        max-width: 500px;
         width: 90%;
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
         animation: slideUp 0.3s ease-out;
+        margin: 20px auto;
     `;
+
+    // 确定当前图标类型
+    const currentIconType = app.iconType || 'color';
+    const currentIconStyle = app.iconStyle || '';
 
     modalContent.innerHTML = `
         <h2 style="margin: 0 0 20px; font-size: 18px; color: #333;">编辑图标</h2>
-        <div style="margin-bottom: 16px;">
-            <div style="width: 100px; height: 100px; border-radius: 50%; background: ${app.color || '#ccc'}; margin: 0 auto 16px; background-image: url(${app.img || ''}); background-size: cover; background-position: center;"></div>
+        
+        <div style="margin-bottom: 20px;">
+            <div style="width: 100px; height: 100px; border-radius: ${settings.iconRadius || 50}%; background: ${app.color || '#ccc'}; margin: 0 auto 16px; background-image: url(${app.img || ''}); background-size: cover; background-position: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" id="icon-preview"></div>
         </div>
+        
+        <div style="margin-bottom: 20px;">
+            <label style="display: block; margin-bottom: 12px; color: #333; font-size: 14px; font-weight: 500;">选择图标</label>
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">
+                <div class="icon-option" data-type="color" style="padding: 12px; border: 2px solid ${currentIconType === 'color' ? '#4285F4' : '#ddd'}; border-radius: 8px; text-align: center; cursor: pointer; background: ${currentIconType === 'color' ? '#f0f7ff' : '#fff'};">
+                    <div style="width: 50px; height: 50px; border-radius: ${settings.iconRadius || 50}%; background: ${app.color || '#fb7299'}; margin: 0 auto 8px;"></div>
+                    <div style="font-size: 12px; color: #666;">纯色图标</div>
+                </div>
+                
+                <div class="icon-option" data-type="icon" data-style="icon1" style="padding: 12px; border: 2px solid ${currentIconType === 'icon' && currentIconStyle === 'icon1' ? '#4285F4' : '#ddd'}; border-radius: 8px; text-align: center; cursor: pointer; background: ${currentIconType === 'icon' && currentIconStyle === 'icon1' ? '#f0f7ff' : '#fff'};">
+                    <div style="width: 50px; height: 50px; border-radius: ${settings.iconRadius || 50}%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); margin: 0 auto 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">📦</div>
+                    <div style="font-size: 12px; color: #666;">图标01</div>
+                </div>
+                
+                <div class="icon-option" data-type="icon" data-style="icon2" style="padding: 12px; border: 2px solid ${currentIconType === 'icon' && currentIconStyle === 'icon2' ? '#4285F4' : '#ddd'}; border-radius: 8px; text-align: center; cursor: pointer; background: ${currentIconType === 'icon' && currentIconStyle === 'icon2' ? '#f0f7ff' : '#fff'};">
+                    <div style="width: 50px; height: 50px; border-radius: ${settings.iconRadius || 50}%; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); margin: 0 auto 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">🎨</div>
+                    <div style="font-size: 12px; color: #666;">图标02</div>
+                </div>
+                
+                <div class="icon-option" data-type="upload" style="padding: 12px; border: 2px solid ${currentIconType === 'upload' ? '#4285F4' : '#ddd'}; border-radius: 8px; text-align: center; cursor: pointer; background: ${currentIconType === 'upload' ? '#f0f7ff' : '#fff'};">
+                    <div style="width: 50px; height: 50px; border-radius: ${settings.iconRadius || 50}%; background: #f0f0f0; margin: 0 auto 8px; display: flex; align-items: center; justify-content: center; color: #999;">📤</div>
+                    <div style="font-size: 12px; color: #666;">本地图标</div>
+                </div>
+            </div>
+        </div>
+        
         <div style="margin-bottom: 16px;">
             <label style="display: block; margin-bottom: 8px; color: #666; font-size: 14px;">网站URL</label>
             <input type="text" id="edit-url" value="${app.url}" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 14px;">
         </div>
+        
         <div style="margin-bottom: 16px;">
             <label style="display: block; margin-bottom: 8px; color: #666; font-size: 14px;">名称</label>
             <input type="text" id="edit-name" value="${app.name}" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 14px;">
         </div>
-        <div style="margin-bottom: 20px;">
-            <label style="display: block; margin-bottom: 8px; color: #666; font-size: 14px;">图标URL (可选)</label>
+        
+        <div id="color-input-group" style="margin-bottom: 16px; ${currentIconType === 'color' ? '' : 'display: none;'}">
+            <label style="display: block; margin-bottom: 8px; color: #666; font-size: 14px;">颜色</label>
+            <input type="color" id="edit-color" value="${app.color || '#fb7299'}" style="width: 100%; height: 40px; border: 1px solid #ddd; border-radius: 6px; cursor: pointer;">
+        </div>
+        
+        <div id="img-input-group" style="margin-bottom: 16px; ${currentIconType === 'upload' ? '' : 'display: none;'}">
+            <label style="display: block; margin-bottom: 8px; color: #666; font-size: 14px;">图标URL</label>
             <input type="text" id="edit-img" value="${app.img || ''}" placeholder="https://..." style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 14px;">
         </div>
+        
         <div style="display: flex; gap: 12px;">
             <button id="modal-cancel" style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px; background: #f5f5f5; cursor: pointer; font-size: 14px;">取消</button>
             <button id="modal-save" style="flex: 1; padding: 10px; border: none; border-radius: 6px; background: #4285F4; color: white; cursor: pointer; font-size: 14px;">保存</button>
@@ -1426,9 +1503,60 @@ function editAppIcon(index) {
     // 事件处理
     const urlInput = modalContent.querySelector('#edit-url');
     const nameInput = modalContent.querySelector('#edit-name');
+    const colorInput = modalContent.querySelector('#edit-color');
     const imgInput = modalContent.querySelector('#edit-img');
     const cancelBtn = modalContent.querySelector('#modal-cancel');
     const saveBtn = modalContent.querySelector('#modal-save');
+    const iconOptions = modalContent.querySelectorAll('.icon-option');
+    const colorInputGroup = modalContent.querySelector('#color-input-group');
+    const imgInputGroup = modalContent.querySelector('#img-input-group');
+    const iconPreview = modalContent.querySelector('#icon-preview');
+
+    let selectedIconType = currentIconType;
+    let selectedIconStyle = currentIconStyle;
+
+    // 图标选项点击处理
+    iconOptions.forEach(option => {
+        option.addEventListener('click', () => {
+            iconOptions.forEach(o => {
+                o.style.borderColor = '#ddd';
+                o.style.background = '#fff';
+            });
+            option.style.borderColor = '#4285F4';
+            option.style.background = '#f0f7ff';
+            
+            selectedIconType = option.dataset.type;
+            selectedIconStyle = option.dataset.style || '';
+            
+            // 显示/隐藏对应的输入框
+            colorInputGroup.style.display = selectedIconType === 'color' ? 'block' : 'none';
+            imgInputGroup.style.display = selectedIconType === 'upload' ? 'block' : 'none';
+            
+            // 更新预览
+            updateIconPreview();
+        });
+    });
+
+    // 颜色变化预览
+    colorInput.addEventListener('change', updateIconPreview);
+    colorInput.addEventListener('input', updateIconPreview);
+
+    function updateIconPreview() {
+        if (selectedIconType === 'color') {
+            iconPreview.style.backgroundImage = 'none';
+            iconPreview.style.background = colorInput.value;
+        } else if (selectedIconType === 'upload') {
+            iconPreview.style.backgroundImage = `url(${imgInput.value || ''})`;
+            iconPreview.style.backgroundColor = colorInput.value;
+        } else if (selectedIconType === 'icon') {
+            iconPreview.style.backgroundImage = 'none';
+            if (selectedIconStyle === 'icon1') {
+                iconPreview.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+            } else if (selectedIconStyle === 'icon2') {
+                iconPreview.style.background = 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)';
+            }
+        }
+    }
 
     cancelBtn.addEventListener('click', () => {
         document.body.removeChild(modal);
@@ -1437,7 +1565,19 @@ function editAppIcon(index) {
     saveBtn.addEventListener('click', () => {
         allApps[index].url = urlInput.value.trim() || app.url;
         allApps[index].name = nameInput.value.trim() || app.name;
-        allApps[index].img = imgInput.value.trim() || '';
+        allApps[index].iconType = selectedIconType;
+        allApps[index].iconStyle = selectedIconStyle;
+        
+        if (selectedIconType === 'color') {
+            allApps[index].color = colorInput.value;
+            allApps[index].img = '';
+        } else if (selectedIconType === 'upload') {
+            allApps[index].img = imgInput.value.trim() || '';
+            allApps[index].color = colorInput.value;
+        } else if (selectedIconType === 'icon') {
+            allApps[index].img = '';
+            allApps[index].color = '';
+        }
         
         saveAppsToStorage();
         renderGrid();
