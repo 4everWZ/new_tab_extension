@@ -90,6 +90,9 @@ let editingItemIndex = null;
 let draggedItem = null;
 let draggedIndex = null;
 
+// 图标透明背景检测缓存
+let iconTransparencyCache = {};
+
 // DOM 元素
 const body = document.getElementById('body');
 const grid = document.getElementById('grid');
@@ -124,6 +127,56 @@ function getWallpaperUrl(storageResult) {
         return storageResult.currentGoogleWallpaper;
     }
     return null;
+}
+
+// 检测图像是否有透明背景
+async function checkImageTransparency(imageUrl) {
+    // 检查缓存
+    if (iconTransparencyCache.hasOwnProperty(imageUrl)) {
+        return iconTransparencyCache[imageUrl];
+    }
+
+    try {
+        const img = new Image();
+        img.crossOrigin = 'Anonymous';
+        
+        return new Promise((resolve) => {
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageData.data;
+                
+                // 检查是否有透明像素（alpha < 255）
+                let hasTransparency = false;
+                for (let i = 3; i < data.length; i += 4) {
+                    if (data[i] < 200) { // alpha 小于 200 视为透明
+                        hasTransparency = true;
+                        break;
+                    }
+                }
+                
+                iconTransparencyCache[imageUrl] = hasTransparency;
+                resolve(hasTransparency);
+            };
+            
+            img.onerror = () => {
+                // 如果加载失败，假设没有透明背景
+                iconTransparencyCache[imageUrl] = false;
+                resolve(false);
+            };
+            
+            img.src = imageUrl;
+        });
+    } catch (e) {
+        // 如果出错，假设没有透明背景
+        iconTransparencyCache[imageUrl] = false;
+        return false;
+    }
 }
 
 // 初始化
@@ -1292,7 +1345,12 @@ function renderGrid() {
         if (app.iconType === 'icon' && app.img) {
             // 网络图标 - icon1 或 icon2
             icon.style.backgroundImage = `url(${app.img})`;
-            icon.style.backgroundColor = '#f0f0f0';
+            // 检测是否有透明背景，如果有则不添加背景色
+            checkImageTransparency(app.img).then(hasTransparency => {
+                if (!hasTransparency) {
+                    icon.style.backgroundColor = '#f0f0f0';
+                }
+            });
             icon.style.backgroundSize = 'cover';
             icon.style.backgroundPosition = 'center';
         } else if (app.iconType === 'upload' && app.img) {
@@ -1580,11 +1638,33 @@ function editAppIcon(index) {
             iconPreview.innerText = textInput.value || app.text || app.name[0];
         } else if (selectedIconType === 'upload') {
             iconPreview.style.backgroundImage = `url(${imgInput.value || ''})`;
-            iconPreview.style.backgroundColor = '#f0f0f0';
+            // 检测上传的图像是否有透明背景
+            if (imgInput.value) {
+                checkImageTransparency(imgInput.value).then(hasTransparency => {
+                    if (!hasTransparency) {
+                        iconPreview.style.backgroundColor = '#f0f0f0';
+                    } else {
+                        iconPreview.style.backgroundColor = 'transparent';
+                    }
+                });
+            } else {
+                iconPreview.style.backgroundColor = '#f0f0f0';
+            }
             iconPreview.innerText = '';
         } else if (selectedIconType === 'icon') {
             iconPreview.style.backgroundImage = `url(${selectedFaviconUrl})`;
-            iconPreview.style.backgroundColor = '#f0f0f0';
+            // 检测 favicon 是否有透明背景
+            if (selectedFaviconUrl) {
+                checkImageTransparency(selectedFaviconUrl).then(hasTransparency => {
+                    if (!hasTransparency) {
+                        iconPreview.style.backgroundColor = '#f0f0f0';
+                    } else {
+                        iconPreview.style.backgroundColor = 'transparent';
+                    }
+                });
+            } else {
+                iconPreview.style.backgroundColor = '#f0f0f0';
+            }
             iconPreview.style.backgroundSize = 'cover';
             iconPreview.style.backgroundPosition = 'center';
             iconPreview.innerText = '';
