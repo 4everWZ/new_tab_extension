@@ -285,10 +285,19 @@ body::after {
     color: white;
     position: relative;
     text-align: center;
+    cursor: move;
 }
 
 .app-item:hover {
     transform: scale(1.08);
+}
+
+.app-item.dragging {
+    opacity: 0.5;
+}
+
+.app-item.drag-over {
+    transform: scale(1.1);
 }
 
 .app-icon {

@@ -1229,6 +1229,15 @@ function renderGrid() {
         item.href = app.url;
         item.className = 'app-item';
         item.target = '_self';
+        item.draggable = true;
+        item.dataset.index = start + index;
+
+        // 拖拽事件
+        item.addEventListener('dragstart', handleDragStart);
+        item.addEventListener('dragover', handleDragOver);
+        item.addEventListener('dragleave', handleDragLeave);
+        item.addEventListener('drop', handleDrop);
+        item.addEventListener('dragend', handleDragEnd);
 
         // 右键菜单删除
         item.addEventListener('contextmenu', (e) => {
@@ -1350,4 +1359,74 @@ function showContextMenu(e, appIndex) {
         document.addEventListener('click', closeMenu);
         document.addEventListener('contextmenu', closeMenu);
     }, 0);
+}
+
+// ==================== 拖拽功能 ====================
+
+let draggedItem = null;
+let draggedIndex = null;
+
+function handleDragStart(e) {
+    draggedItem = this;
+    draggedIndex = parseInt(this.dataset.index);
+    
+    this.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/html', this.innerHTML);
+}
+
+function handleDragOver(e) {
+    if (e.preventDefault) {
+        e.preventDefault();
+    }
+    
+    e.dataTransfer.dropEffect = 'move';
+    
+    // 添加视觉反馈
+    if (this !== draggedItem) {
+        this.classList.add('drag-over');
+    }
+    
+    return false;
+}
+
+function handleDragLeave(e) {
+    this.classList.remove('drag-over');
+}
+
+function handleDrop(e) {
+    if (e.stopPropagation) {
+        e.stopPropagation();
+    }
+    
+    this.classList.remove('drag-over');
+    
+    if (draggedItem !== this) {
+        const dropIndex = parseInt(this.dataset.index);
+        
+        // 交换数组中的位置
+        const temp = allApps[draggedIndex];
+        allApps[draggedIndex] = allApps[dropIndex];
+        allApps[dropIndex] = temp;
+        
+        // 保存到存储
+        saveAppsToStorage();
+        
+        // 重新渲染
+        render();
+    }
+    
+    return false;
+}
+
+function handleDragEnd(e) {
+    this.classList.remove('dragging');
+    
+    // 移除所有拖拽样式
+    document.querySelectorAll('.app-item').forEach(item => {
+        item.classList.remove('drag-over');
+    });
+    
+    draggedItem = null;
+    draggedIndex = null;
 }
