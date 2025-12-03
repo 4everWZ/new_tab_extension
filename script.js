@@ -1289,20 +1289,24 @@ function renderGrid() {
             icon.classList.add('with-animation');
         }
 
-        if (app.iconType === 'icon' && app.iconStyle === 'icon1') {
-            // 图标01 - 紫蓝渐变
-            icon.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
-            icon.style.color = 'white';
-            icon.innerText = '📦';
-        } else if (app.iconType === 'icon' && app.iconStyle === 'icon2') {
-            // 图标02 - 粉红渐变
-            icon.style.background = 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)';
-            icon.style.color = 'white';
-            icon.innerText = '🎨';
-        } else if (app.img) {
+        if (app.iconType === 'icon' && app.img) {
+            // 网络图标 - icon1 或 icon2
+            icon.style.backgroundImage = `url(${app.img})`;
+            icon.style.backgroundColor = '#f0f0f0';
+            icon.style.backgroundSize = 'cover';
+            icon.style.backgroundPosition = 'center';
+        } else if (app.iconType === 'upload' && app.img) {
+            // 上传的本地图标
             icon.style.backgroundImage = `url(${app.img})`;
             icon.style.backgroundColor = app.color || '#ccc';
+            icon.style.backgroundSize = 'cover';
+            icon.style.backgroundPosition = 'center';
+        } else if (app.iconType === 'color') {
+            // 纯色图标 - 文字+颜色
+            icon.style.backgroundColor = app.color || '#ccc';
+            icon.innerText = app.text || app.name[0];
         } else {
+            // 备用：显示文字
             icon.style.backgroundColor = app.color || '#ccc';
             icon.innerText = app.text || app.name[0];
         }
@@ -1389,6 +1393,8 @@ function exitEditMode() {
 // 编辑图标
 function editAppIcon(index) {
     const app = allApps[index];
+    const currentIconType = app.iconType || 'color';
+    const currentIconStyle = app.iconStyle || '';
     
     // 创建编辑对话框
     const modal = document.createElement('div');
@@ -1419,39 +1425,54 @@ function editAppIcon(index) {
         margin: 20px auto;
     `;
 
-    // 确定当前图标类型
-    const currentIconType = app.iconType || 'color';
-    const currentIconStyle = app.iconStyle || '';
+    // 初始化图标选项HTML
+    let iconOptionsHTML = `
+        <div class="icon-option" data-type="color" style="padding: 12px; border: 2px solid ${currentIconType === 'color' ? '#4285F4' : '#ddd'}; border-radius: 8px; text-align: center; cursor: pointer; background: ${currentIconType === 'color' ? '#f0f7ff' : '#fff'};">
+            <div style="width: 60px; height: 60px; border-radius: ${settings.iconRadius || 50}%; background: ${app.color || '#fb7299'}; margin: 0 auto 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">
+                ${app.text || app.name[0]}
+            </div>
+            <div style="font-size: 12px; color: #666;">纯色图标</div>
+        </div>
+    `;
+    
+    // 动态获取favicon作为icon1和icon2选项
+    const faviconUrls = getFaviconUrl(app.url);
+    let availableIconCount = 0;
+    
+    // 只显示最多2个网络图标
+    for (let i = 0; i < Math.min(faviconUrls.length, 2); i++) {
+        const iconStyle = i === 0 ? 'icon1' : 'icon2';
+        const isSelected = currentIconType === 'icon' && currentIconStyle === iconStyle;
+        iconOptionsHTML += `
+            <div class="icon-option" data-type="icon" data-style="${iconStyle}" data-url="${faviconUrls[i]}" style="padding: 12px; border: 2px solid ${isSelected ? '#4285F4' : '#ddd'}; border-radius: 8px; text-align: center; cursor: pointer; background: ${isSelected ? '#f0f7ff' : '#fff'};">
+                <div style="width: 60px; height: 60px; border-radius: ${settings.iconRadius || 50}%; background-image: url(${faviconUrls[i]}); background-size: cover; background-position: center; margin: 0 auto 8px; border: 1px solid #eee;"></div>
+                <div style="font-size: 12px; color: #666;">图标${String.fromCharCode(65 + i)}</div>
+            </div>
+        `;
+        availableIconCount++;
+    }
+    
+    // 如果没有网络图标，也显示上传选项
+    iconOptionsHTML += `
+        <div class="icon-option" data-type="upload" style="padding: 12px; border: 2px solid ${currentIconType === 'upload' ? '#4285F4' : '#ddd'}; border-radius: 8px; text-align: center; cursor: pointer; background: ${currentIconType === 'upload' ? '#f0f7ff' : '#fff'};">
+            <div style="width: 60px; height: 60px; border-radius: ${settings.iconRadius || 50}%; background: #f0f0f0; margin: 0 auto 8px; display: flex; align-items: center; justify-content: center; color: #999; font-size: 24px;">📤</div>
+            <div style="font-size: 12px; color: #666;">本地图标</div>
+        </div>
+    `;
 
     modalContent.innerHTML = `
         <h2 style="margin: 0 0 20px; font-size: 18px; color: #333;">编辑图标</h2>
         
         <div style="margin-bottom: 20px;">
-            <div style="width: 100px; height: 100px; border-radius: ${settings.iconRadius || 50}%; background: ${app.color || '#ccc'}; margin: 0 auto 16px; background-image: url(${app.img || ''}); background-size: cover; background-position: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" id="icon-preview"></div>
+            <div style="width: 100px; height: 100px; aspect-ratio: 1; border-radius: ${settings.iconRadius || 50}%; background: ${app.color || '#ccc'}; margin: 0 auto 16px; background-image: url(${app.img || ''}); background-size: cover; background-position: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 32px;" id="icon-preview">
+                ${currentIconType === 'color' ? (app.text || app.name[0]) : ''}
+            </div>
         </div>
         
         <div style="margin-bottom: 20px;">
             <label style="display: block; margin-bottom: 12px; color: #333; font-size: 14px; font-weight: 500;">选择图标</label>
-            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">
-                <div class="icon-option" data-type="color" style="padding: 12px; border: 2px solid ${currentIconType === 'color' ? '#4285F4' : '#ddd'}; border-radius: 8px; text-align: center; cursor: pointer; background: ${currentIconType === 'color' ? '#f0f7ff' : '#fff'};">
-                    <div style="width: 50px; height: 50px; border-radius: ${settings.iconRadius || 50}%; background: ${app.color || '#fb7299'}; margin: 0 auto 8px;"></div>
-                    <div style="font-size: 12px; color: #666;">纯色图标</div>
-                </div>
-                
-                <div class="icon-option" data-type="icon" data-style="icon1" style="padding: 12px; border: 2px solid ${currentIconType === 'icon' && currentIconStyle === 'icon1' ? '#4285F4' : '#ddd'}; border-radius: 8px; text-align: center; cursor: pointer; background: ${currentIconType === 'icon' && currentIconStyle === 'icon1' ? '#f0f7ff' : '#fff'};">
-                    <div style="width: 50px; height: 50px; border-radius: ${settings.iconRadius || 50}%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); margin: 0 auto 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">📦</div>
-                    <div style="font-size: 12px; color: #666;">图标01</div>
-                </div>
-                
-                <div class="icon-option" data-type="icon" data-style="icon2" style="padding: 12px; border: 2px solid ${currentIconType === 'icon' && currentIconStyle === 'icon2' ? '#4285F4' : '#ddd'}; border-radius: 8px; text-align: center; cursor: pointer; background: ${currentIconType === 'icon' && currentIconStyle === 'icon2' ? '#f0f7ff' : '#fff'};">
-                    <div style="width: 50px; height: 50px; border-radius: ${settings.iconRadius || 50}%; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); margin: 0 auto 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">🎨</div>
-                    <div style="font-size: 12px; color: #666;">图标02</div>
-                </div>
-                
-                <div class="icon-option" data-type="upload" style="padding: 12px; border: 2px solid ${currentIconType === 'upload' ? '#4285F4' : '#ddd'}; border-radius: 8px; text-align: center; cursor: pointer; background: ${currentIconType === 'upload' ? '#f0f7ff' : '#fff'};">
-                    <div style="width: 50px; height: 50px; border-radius: ${settings.iconRadius || 50}%; background: #f0f0f0; margin: 0 auto 8px; display: flex; align-items: center; justify-content: center; color: #999;">📤</div>
-                    <div style="font-size: 12px; color: #666;">本地图标</div>
-                </div>
+            <div id="icon-options-grid" style="display: grid; grid-template-columns: repeat(${Math.min(availableIconCount + 2, 4)}, 1fr); gap: 12px;">
+                ${iconOptionsHTML}
             </div>
         </div>
         
@@ -1466,6 +1487,8 @@ function editAppIcon(index) {
         </div>
         
         <div id="color-input-group" style="margin-bottom: 16px; ${currentIconType === 'color' ? '' : 'display: none;'}">
+            <label style="display: block; margin-bottom: 8px; color: #666; font-size: 14px;">纯色文字</label>
+            <input type="text" id="edit-text" value="${app.text || app.name[0]}" maxlength="4" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 14px; margin-bottom: 8px;">
             <label style="display: block; margin-bottom: 8px; color: #666; font-size: 14px;">颜色</label>
             <input type="color" id="edit-color" value="${app.color || '#fb7299'}" style="width: 100%; height: 40px; border: 1px solid #ddd; border-radius: 6px; cursor: pointer;">
         </div>
@@ -1503,6 +1526,7 @@ function editAppIcon(index) {
     // 事件处理
     const urlInput = modalContent.querySelector('#edit-url');
     const nameInput = modalContent.querySelector('#edit-name');
+    const textInput = modalContent.querySelector('#edit-text');
     const colorInput = modalContent.querySelector('#edit-color');
     const imgInput = modalContent.querySelector('#edit-img');
     const cancelBtn = modalContent.querySelector('#modal-cancel');
@@ -1514,6 +1538,7 @@ function editAppIcon(index) {
 
     let selectedIconType = currentIconType;
     let selectedIconStyle = currentIconStyle;
+    let selectedFaviconUrl = '';
 
     // 图标选项点击处理
     iconOptions.forEach(option => {
@@ -1527,6 +1552,7 @@ function editAppIcon(index) {
             
             selectedIconType = option.dataset.type;
             selectedIconStyle = option.dataset.style || '';
+            selectedFaviconUrl = option.dataset.url || '';
             
             // 显示/隐藏对应的输入框
             colorInputGroup.style.display = selectedIconType === 'color' ? 'block' : 'none';
@@ -1537,24 +1563,31 @@ function editAppIcon(index) {
         });
     });
 
-    // 颜色变化预览
+    // 颜色和文字变化预览
     colorInput.addEventListener('change', updateIconPreview);
     colorInput.addEventListener('input', updateIconPreview);
+    textInput.addEventListener('input', updateIconPreview);
+    imgInput.addEventListener('input', updateIconPreview);
 
     function updateIconPreview() {
+        iconPreview.style.color = 'white';
+        iconPreview.style.fontSize = '32px';
+        iconPreview.style.fontWeight = 'bold';
+        
         if (selectedIconType === 'color') {
             iconPreview.style.backgroundImage = 'none';
             iconPreview.style.background = colorInput.value;
+            iconPreview.innerText = textInput.value || app.text || app.name[0];
         } else if (selectedIconType === 'upload') {
             iconPreview.style.backgroundImage = `url(${imgInput.value || ''})`;
-            iconPreview.style.backgroundColor = colorInput.value;
+            iconPreview.style.backgroundColor = '#f0f0f0';
+            iconPreview.innerText = '';
         } else if (selectedIconType === 'icon') {
-            iconPreview.style.backgroundImage = 'none';
-            if (selectedIconStyle === 'icon1') {
-                iconPreview.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
-            } else if (selectedIconStyle === 'icon2') {
-                iconPreview.style.background = 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)';
-            }
+            iconPreview.style.backgroundImage = `url(${selectedFaviconUrl})`;
+            iconPreview.style.backgroundColor = '#f0f0f0';
+            iconPreview.style.backgroundSize = 'cover';
+            iconPreview.style.backgroundPosition = 'center';
+            iconPreview.innerText = '';
         }
     }
 
@@ -1569,13 +1602,16 @@ function editAppIcon(index) {
         allApps[index].iconStyle = selectedIconStyle;
         
         if (selectedIconType === 'color') {
+            allApps[index].text = textInput.value || app.text || app.name[0];
             allApps[index].color = colorInput.value;
             allApps[index].img = '';
         } else if (selectedIconType === 'upload') {
             allApps[index].img = imgInput.value.trim() || '';
-            allApps[index].color = colorInput.value;
+            allApps[index].text = '';
+            allApps[index].color = '';
         } else if (selectedIconType === 'icon') {
-            allApps[index].img = '';
+            allApps[index].img = selectedFaviconUrl;
+            allApps[index].text = '';
             allApps[index].color = '';
         }
         
