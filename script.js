@@ -1275,16 +1275,21 @@ function renderGrid() {
 
         // 在编辑模式下添加删除按钮和编辑图标
         if (isEditMode) {
-            // 编辑图标 - hover 时显示
+            // 编辑图标 - hover 时显示，使用SVG橙色铅笔
             const editIcon = document.createElement('div');
             editIcon.className = 'edit-icon';
-            editIcon.innerHTML = '✏️';
+            editIcon.innerHTML = `
+                <svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="8" y="30" width="32" height="4" rx="2" fill="#E8A87C"/>
+                    <path d="M36 12L12 36v4h4l24-24" fill="none" stroke="#FF9500" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+                    <rect x="10" y="14" width="20" height="20" transform="rotate(45 20 24)" fill="none" stroke="#FF9500" stroke-width="3"/>
+                </svg>
+            `;
             editIcon.addEventListener('click', (e) => {
                 e.stopPropagation();
                 e.preventDefault();
                 editAppIcon(realIndex);
             });
-            iconContainer.appendChild(editIcon);
             iconContainer.appendChild(editIcon);
 
             // 删除按钮 - 始终显示

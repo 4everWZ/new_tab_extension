@@ -383,19 +383,17 @@ body::after {
 /* 编辑图标 - hover 时显示，覆盖整个图标 */
 .edit-icon {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.2);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 60px;
+    height: 60px;
     display: flex;
     align-items: center;
     justify-content: center;
     opacity: 0;
     transition: opacity 0.2s ease;
     pointer-events: none;
-    font-size: 48px;
     cursor: pointer;
     z-index: 100;
 }
@@ -406,16 +404,7 @@ body::after {
 }
 
 .edit-icon:hover {
-    background: rgba(0, 0, 0, 0.8);
-}
-
-.app-item.edit-mode:hover .edit-icon {
-    opacity: 1;
-    pointer-events: auto;
-}
-
-.edit-icon:hover {
-    background: rgba(0, 0, 0, 0.8);
+    filter: brightness(1.2);
 }
 
 /* 拖拽挤走动画 */
