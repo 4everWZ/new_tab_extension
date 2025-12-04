@@ -1440,8 +1440,9 @@ function enterEditMode(index) {
     editingItemIndex = index;
     renderGrid();
     
-    // 添加全局点击事件监听，点击空白处退出编辑模式
+    // 添加全局点击和右键事件监听，点击/右键空白处退出编辑模式
     document.addEventListener('click', exitEditModeOnClick, true);
+    document.addEventListener('contextmenu', exitEditModeOnContextMenu, true);
 }
 
 // 点击空白处退出编辑模式
@@ -1455,11 +1456,23 @@ function exitEditModeOnClick(e) {
     exitEditMode();
 }
 
+// 右键空白处退出编辑模式
+function exitEditModeOnContextMenu(e) {
+    // 如果右键的是grid内的item，不退出（item有自己的contextmenu处理）
+    const itemClicked = e.target.closest('.app-item');
+    if (itemClicked && grid.contains(itemClicked)) {
+        return;
+    }
+    // 右键其他地方则退出编辑模式
+    exitEditMode();
+}
+
 // 退出编辑模式
 function exitEditMode() {
     isEditMode = false;
     editingItemIndex = null;
     document.removeEventListener('click', exitEditModeOnClick, true);
+    document.removeEventListener('contextmenu', exitEditModeOnContextMenu, true);
     renderGrid();
 }
 
