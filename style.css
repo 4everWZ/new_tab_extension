@@ -293,10 +293,6 @@ body::after {
     user-select: none;
 }
 
-.app-item:active {
-    cursor: grabbing;
-}
-
 .app-item:hover {
     transform: scale(1.08);
 }
@@ -305,13 +301,13 @@ body::after {
     cursor: grab;
 }
 
-.app-item.edit-mode:active,
-.app-item.dragging {
+.app-item.edit-mode:active {
     cursor: grabbing;
 }
 
 .app-item.dragging {
     opacity: 0.5;
+    cursor: grabbing;
 }
 
 .app-item.drag-over {
