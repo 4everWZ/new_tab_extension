@@ -169,6 +169,40 @@ function checkImageTransparency(imageUrl) {
     }
 }
 
+// 将图像转换为 data URL 缓存
+function convertImageToDataUrl(imageUrl) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = 'Anonymous';
+        
+        img.onload = () => {
+            try {
+                const canvas = document.createElement('canvas');
+                const width = img.naturalWidth || img.width;
+                const height = img.naturalHeight || img.height;
+                if (!width || !height) {
+                    resolve(imageUrl); // 转换失败，返回原 URL
+                    return;
+                }
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                const dataUrl = canvas.toDataURL('image/png');
+                resolve(dataUrl);
+            } catch (e) {
+                resolve(imageUrl); // 转换失败，返回原 URL
+            }
+        };
+        
+        img.onerror = () => {
+            resolve(imageUrl); // 加载失败，返回原 URL
+        };
+        
+        img.src = imageUrl;
+    });
+}
+
 // 初始化
 document.addEventListener('DOMContentLoaded', () => {
     setupSearch();
@@ -933,17 +967,20 @@ function addNewShortcut() {
             img.onload = () => {
                 if (!loaded) {
                     loaded = true;
-                    newApp.img = faviconUrl;
-                    newApp.iconType = 'icon';
-                    
-                    // 立即检测favicon的透明背景
-                    checkImageTransparency(faviconUrl).then(hasTransparency => {
-                        newApp.isTransparent = hasTransparency;
-                        allApps.push(newApp);
-                        saveAppsToStorage();
-                        shortcutForm.reset();
-                        preview.classList.remove('show');
-                        render();
+                    // 转换为 data URL 进行缓存
+                    convertImageToDataUrl(faviconUrl).then(cachedUrl => {
+                        newApp.img = cachedUrl;
+                        newApp.iconType = 'icon';
+                        
+                        // 立即检测favicon的透明背景
+                        checkImageTransparency(cachedUrl).then(hasTransparency => {
+                            newApp.isTransparent = hasTransparency;
+                            allApps.push(newApp);
+                            saveAppsToStorage();
+                            shortcutForm.reset();
+                            preview.classList.remove('show');
+                            render();
+                        });
                     });
                 }
             };
