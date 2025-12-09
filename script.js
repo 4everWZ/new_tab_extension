@@ -211,6 +211,7 @@ function loadData() {
         // 恢复搜索引擎选择
         if (settings.currentSearchEngine) {
             currentSearchEngine = settings.currentSearchEngine;
+            updateSearchEngineIcon();
         }
         
         // 立即设置所有样式 - 包括遮罩、网格、搜索框等
@@ -260,7 +261,10 @@ function loadData() {
                 option.classList.remove('active');
             }
         });
-        
+
+        // 确保图标也与保存值同步
+        updateSearchEngineIcon();
+
         render();
     });
 }
