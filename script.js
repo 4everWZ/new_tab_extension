@@ -1823,6 +1823,14 @@ function editAppIcon(index) {
 
 // 删除应用
 function deleteApp(index) {
+    const appToDelete = allApps[index];
+    
+    // 清理 data URL 缓存以防止内存泄漏
+    if (appToDelete && appToDelete.img && appToDelete.img.startsWith('data:')) {
+        // data URL 会在对象删除时自动被垃圾回收，这里只需要删除引用
+        appToDelete.img = null;
+    }
+    
     allApps.splice(index, 1);
     saveAppsToStorage();
     
