@@ -115,16 +115,79 @@ const settingsPanel = document.getElementById('settings-panel');
 // ==================== 壁纸辅助函数 ====================
 function getWallpaperUrl(storageResult) {
     // 根据设置的壁纸源返回存储中的壁纸URL
+    console.log('[getWallpaperUrl] Checking source:', settings.wallpaperSource, {
+        hasLocalData: !!storageResult.wallpaperData,
+        hasBingData: !!storageResult.currentBingWallpaper,
+        hasGoogleData: !!storageResult.currentGoogleWallpaper
+    });
+    
     if (settings.wallpaperSource === 'local' && storageResult.wallpaperData) {
+        console.log('[getWallpaperUrl] ✓ Returning local wallpaper');
         return storageResult.wallpaperData;
     }
     if (settings.wallpaperSource === 'bing' && storageResult.currentBingWallpaper) {
+        console.log('[getWallpaperUrl] ✓ Returning Bing wallpaper');
         return storageResult.currentBingWallpaper;
     }
     if (settings.wallpaperSource === 'google' && storageResult.currentGoogleWallpaper) {
+        console.log('[getWallpaperUrl] ✓ Returning Google wallpaper');
         return storageResult.currentGoogleWallpaper;
     }
+    
+    console.warn('[getWallpaperUrl] No wallpaper found for source:', settings.wallpaperSource);
     return null;
+}
+
+// 图片压缩函数：将图片压缩到安全大小以适应 chrome.storage.local 的 10MB 限制
+function compressImage(dataUrl, maxSize = 8 * 1024 * 1024) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            let width = img.width;
+            let height = img.height;
+            let quality = 0.85;
+            let result = null;
+            
+            // 设置初始 canvas 大小和绘制图片
+            canvas.width = width;
+            canvas.height = height;
+            ctx.drawImage(img, 0, 0);
+            result = canvas.toDataURL('image/jpeg', quality);
+            
+            console.log(`[Compress] Initial size: ${(result.length / 1024 / 1024).toFixed(2)}MB`);
+            
+            // 如果仍然过大，逐步降低质量或缩小尺寸
+            while (result.length > maxSize && quality > 0.3) {
+                quality -= 0.1;
+                result = canvas.toDataURL('image/jpeg', quality);
+                console.log(`[Compress] After quality ${quality.toFixed(2)}: ${(result.length / 1024 / 1024).toFixed(2)}MB`);
+            }
+            
+            // 如果仍然过大，缩小尺寸
+            while (result.length > maxSize && width > 800) {
+                width = Math.floor(width * 0.8);
+                height = Math.floor(height * 0.8);
+                canvas.width = width;
+                canvas.height = height;
+                ctx.drawImage(img, 0, 0, width, height);
+                result = canvas.toDataURL('image/jpeg', quality);
+                console.log(`[Compress] After resize to ${width}x${height}: ${(result.length / 1024 / 1024).toFixed(2)}MB`);
+            }
+            
+            const originalSize = (dataUrl.length / 1024 / 1024).toFixed(2);
+            const compressedSize = (result.length / 1024 / 1024).toFixed(2);
+            console.log(`[Compress] ✓ Image compressed: ${originalSize}MB → ${compressedSize}MB (${Math.round(compressedSize / originalSize * 100)}%)`);
+            resolve(result);
+        };
+        img.onerror = () => {
+            console.error('[Compress] Failed to load image for compression');
+            resolve(dataUrl);
+        };
+        img.src = dataUrl;
+    });
 }
 
 // 检测图像是否有透明背景（用于初始化时保存图标属性）
@@ -271,6 +334,15 @@ function loadData() {
         console.log('[Wallpaper] result.currentGoogleWallpaper:', result.currentGoogleWallpaper ? 'exists' : 'null');
         
         if (wallpaperUrl) {
+            // 验证：如果是本地壁纸，确保 settings.wallpaperSource 也是 'local'
+            if (result.wallpaperData && wallpaperUrl === result.wallpaperData) {
+                if (settings.wallpaperSource !== 'local') {
+                    console.warn('[Wallpaper] Mismatch: wallpaperData exists but wallpaperSource is', settings.wallpaperSource);
+                    settings.wallpaperSource = 'local';
+                    saveSettingsToStorage();
+                }
+            }
+            
             // 设置壁纸到 body::before 伪元素
             const style = document.createElement('style');
             style.textContent = `body::before { background-image: url("${wallpaperUrl}") !important; }`;
@@ -380,6 +452,7 @@ function displayWallpaper(imageUrl, saveKey = null) {
     style.textContent = `body::before { background-image: url("${imageUrl}") !important; }`;
     document.head.appendChild(style);
     body.classList.add('has-wallpaper');
+    
     if (saveKey) {
         const saveObj = {};
         saveObj[saveKey] = imageUrl;
@@ -1093,20 +1166,50 @@ function setupSettingsModal() {
     document.getElementById('wallpaper-file').addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (file) {
-            console.log('[Wallpaper] File selected:', file.name, 'Type:', file.type, 'Size:', file.size);
+            console.log('[Wallpaper] File selected:', file.name, 'Type:', file.type, 'Size:', (file.size / 1024 / 1024).toFixed(2) + 'MB');
             const reader = new FileReader();
-            reader.onload = (event) => {
-                const wallpaperData = event.target.result;
-                console.log('[Wallpaper] File read successfully, data length:', wallpaperData.length);
+            reader.onload = async (event) => {
+                let wallpaperData = event.target.result;
+                const originalSize = wallpaperData.length;
+                console.log('[Wallpaper] File read successfully, data length:', (originalSize / 1024 / 1024).toFixed(2) + 'MB');
                 
-                // 立即显示壁纸（同步操作）
-                displayWallpaper(wallpaperData, 'wallpaperData');
+                // 如果图片超过 5MB，进行压缩
+                if (originalSize > 5 * 1024 * 1024) {
+                    console.log('[Wallpaper] Image size > 5MB, compressing...');
+                    wallpaperData = await compressImage(wallpaperData);
+                    console.log('[Wallpaper] After compression:', (wallpaperData.length / 1024 / 1024).toFixed(2) + 'MB');
+                }
                 
-                // 更新设置
+                // 更新内存中的设置
+                const oldSource = settings.wallpaperSource;
                 settings.wallpaperSource = 'local';
+                console.log('[Wallpaper] Updated settings.wallpaperSource:', oldSource, '->', 'local');
+                
+                // 更新 UI
                 document.getElementById('wallpaper-source').value = 'local';
-                saveSettingsToStorage();
-                console.log('[Wallpaper] Wallpaper displayed and settings saved');
+                
+                // 保存设置和壁纸数据到 storage - 这是关键的原子操作
+                const saveData = {
+                    settings: JSON.parse(JSON.stringify(settings)), // 确保保存的是最新的设置副本
+                    wallpaperData: wallpaperData
+                };
+                
+                console.log('[Wallpaper] Saving to storage:', {
+                    settingsWallpaperSource: saveData.settings.wallpaperSource,
+                    wallpaperDataLength: (saveData.wallpaperData.length / 1024 / 1024).toFixed(2) + 'MB'
+                });
+                
+                chrome.storage.local.set(saveData, () => {
+                    if (chrome.runtime.lastError) {
+                        console.error('[Wallpaper] ✗ Storage save failed:', chrome.runtime.lastError);
+                        alert('壁纸保存失败：' + chrome.runtime.lastError.message);
+                    } else {
+                        console.log('[Wallpaper] ✓ Data successfully saved to storage');
+                        // 保存完成后再显示壁纸
+                        displayWallpaper(wallpaperData, null);
+                        console.log('[Wallpaper] Wallpaper displayed on screen');
+                    }
+                });
                 
                 // 重置文件输入框，允许重新上传同一文件
                 e.target.value = '';
