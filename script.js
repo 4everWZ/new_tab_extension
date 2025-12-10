@@ -763,11 +763,25 @@ function setupSearch() {
             const name = prompt('输入搜索引擎名称 (如: DuckDuckGo)');
             if (!name) return;
             
-            const url = prompt('输入搜索URL (使用 {query} 作为占位符)\n例: https://duckduckgo.com/?q={query}');
-            if (!url || !url.includes('{query}')) {
-                alert('URL 必须包含 {query} 占位符');
-                return;
+            const baseUrl = prompt('输入搜索引擎的基础URL\n例: https://duckduckgo.com/\n（不需要手动添加查询参数）');
+            if (!baseUrl) return;
+            
+            // 自动处理URL格式
+            let url = baseUrl.trim();
+            
+            // 检查URL是否以=或?结尾，如果没有则自动添加
+            if (!url.endsWith('=') && !url.endsWith('?')) {
+                if (url.includes('?')) {
+                    // URL中有?，则在末尾添加&和参数名=
+                    url += '&q=';
+                } else {
+                    // URL中没有?，则添加?和参数名=
+                    url += '?q=';
+                }
             }
+            
+            // 在URL末尾添加{query}占位符
+            url += '{query}';
             
             // 添加到搜索引擎配置
             const engineKey = name.toLowerCase().replace(/\s+/g, '');
