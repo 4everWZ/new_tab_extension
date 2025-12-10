@@ -278,7 +278,15 @@ document.addEventListener('DOMContentLoaded', () => {
 // ==================== 数据存储 ====================
 
 function loadData() {
-    chrome.storage.local.get(['apps', 'settings', 'wallpaperData', 'currentBingWallpaper', 'currentGoogleWallpaper'], (result) => {
+    chrome.storage.local.get(['apps', 'settings', 'wallpaperData', 'currentBingWallpaper', 'currentGoogleWallpaper', 'customSearchEngines', 'customEngineIcons'], (result) => {
+        // 恢复自定义搜索引擎
+        if (result.customSearchEngines) {
+            Object.assign(searchEngines, result.customSearchEngines);
+        }
+        if (result.customEngineIcons) {
+            Object.assign(searchEngineIconsData, result.customEngineIcons);
+        }
+        
         // 加载数据
         if (result.apps && result.apps.length > 0) {
             allApps = result.apps;
@@ -349,6 +357,77 @@ function loadData() {
         
         // 所有准备就绪后，显示容器并渲染
         document.querySelector('.container').classList.add('ready');
+        
+        // 恢复自定义搜索引擎的下拉菜单项
+        const divider = document.querySelector('.dropdown-divider');
+        const defaultEngines = ['google', 'bing', 'baidu'];
+        Object.keys(searchEngines).forEach(engineKey => {
+            // 跳过内置引擎，只处理自定义的
+            if (defaultEngines.includes(engineKey)) return;
+            
+            // 检查该选项是否已存在
+            if (document.querySelector(`[data-engine="${engineKey}"]`)) return;
+            
+            const engineName = Object.keys(searchEngines).find(k => 
+                k === engineKey ? searchEngines[k] : false
+            );
+            
+            // 获取引擎的第一个字母作为图标文字
+            const engineDisplayName = engineKey.charAt(0).toUpperCase() + engineKey.slice(1);
+            
+            // 创建选项
+            const option = document.createElement('div');
+            option.className = 'dropdown-option';
+            option.dataset.engine = engineKey;
+            option.innerHTML = `
+                <svg class="dropdown-icon" viewBox="0 0 24 24">
+                    <text x="12" y="16" text-anchor="middle" font-size="14" font-family="Arial" fill="#999">${engineDisplayName[0].toUpperCase()}</text>
+                </svg>
+                <span>${engineDisplayName}</span>
+                <button class="delete-engine-btn" title="Delete">×</button>
+            `;
+            
+            // 插入到分隔线前
+            divider.parentNode.insertBefore(option, divider);
+            
+            // 添加点击事件
+            option.addEventListener('click', (e) => {
+                if (e.target.classList.contains('delete-engine-btn')) return;
+                e.stopPropagation();
+                currentSearchEngine = engineKey;
+                settings.currentSearchEngine = engineKey;
+                document.querySelectorAll('.dropdown-option').forEach(opt => opt.classList.remove('active'));
+                option.classList.add('active');
+                updateSearchEngineIcon();
+                searchEngineSelector.classList.remove('active');
+                searchEngineDropdownMenu.classList.remove('show');
+                saveSettingsToStorage();
+                searchInput.focus();
+            });
+            
+            // 添加删除按钮事件
+            const deleteBtn = option.querySelector('.delete-engine-btn');
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (confirm(`确定删除"${engineDisplayName}"吗？`)) {
+                    delete searchEngines[engineKey];
+                    delete searchEngineIconsData[engineKey];
+                    option.remove();
+                    chrome.storage.local.set({
+                        customSearchEngines: searchEngines,
+                        customEngineIcons: searchEngineIconsData
+                    });
+                    if (currentSearchEngine === engineKey) {
+                        currentSearchEngine = 'google';
+                        settings.currentSearchEngine = 'google';
+                        document.querySelectorAll('.dropdown-option').forEach(opt => opt.classList.remove('active'));
+                        document.querySelector('[data-engine="google"]').classList.add('active');
+                        updateSearchEngineIcon();
+                        saveSettingsToStorage();
+                    }
+                }
+            });
+        });
         
         // 设置搜索引擎的 active 状态
         document.querySelectorAll('.dropdown-option').forEach(option => {
@@ -700,7 +779,14 @@ function setupSearch() {
                 
                 if (confirm(`确定删除"${engineName}"吗？`)) {
                     delete searchEngines[engine];
+                    delete searchEngineIconsData[engine];
                     option.remove();
+                    
+                    // 保存到 storage
+                    chrome.storage.local.set({
+                        customSearchEngines: searchEngines,
+                        customEngineIcons: searchEngineIconsData
+                    });
                     
                     // 如果删除的是当前搜索引擎，切换到Google
                     if (currentSearchEngine === engine) {
@@ -789,6 +875,18 @@ function setupSearch() {
                 web: url
             };
             
+            // 为自定义搜索引擎添加图标数据
+            searchEngineIconsData[engineKey] = {
+                color: '#' + Math.floor(Math.random()*16777215).toString(16),
+                text: name[0].toUpperCase()
+            };
+            
+            // 保存到 storage
+            chrome.storage.local.set({
+                customSearchEngines: searchEngines,
+                customEngineIcons: searchEngineIconsData
+            });
+            
             // 创建新选项
             const newOption = document.createElement('div');
             newOption.className = 'dropdown-option';
@@ -811,7 +909,14 @@ function setupSearch() {
                 e.stopPropagation();
                 if (confirm(`确定删除"${name}"吗？`)) {
                     delete searchEngines[engineKey];
+                    delete searchEngineIconsData[engineKey];
                     newOption.remove();
+                    
+                    // 保存到 storage
+                    chrome.storage.local.set({
+                        customSearchEngines: searchEngines,
+                        customEngineIcons: searchEngineIconsData
+                    });
                     
                     // 如果删除的是当前搜索引擎，切换到Google
                     if (currentSearchEngine === engineKey) {
