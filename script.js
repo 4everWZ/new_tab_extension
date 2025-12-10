@@ -662,7 +662,10 @@ function setupSearch() {
 
     // 搜索引擎选项点击
     document.querySelectorAll('.dropdown-option').forEach(option => {
+        // 选择搜索引擎事件
         option.addEventListener('click', (e) => {
+            if (e.target.classList.contains('delete-engine-btn')) return;
+            
             e.stopPropagation();
             const engine = option.dataset.engine;
             currentSearchEngine = engine;
@@ -678,10 +681,39 @@ function setupSearch() {
             
             // 保存设置
             saveSettingsToStorage();
-            
-            // 获取焦点到搜索框
             searchInput.focus();
         });
+        
+        // 删除搜索引擎事件（仅对自定义引擎）
+        const deleteBtn = option.querySelector('.delete-engine-btn');
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const engine = option.dataset.engine;
+                const engineName = option.querySelector('span').textContent;
+                
+                // 检查是否是内置引擎（不能删除）
+                if (['google', 'bing', 'baidu'].includes(engine)) {
+                    alert('内置搜索引擎不能删除');
+                    return;
+                }
+                
+                if (confirm(`确定删除"${engineName}"吗？`)) {
+                    delete searchEngines[engine];
+                    option.remove();
+                    
+                    // 如果删除的是当前搜索引擎，切换到Google
+                    if (currentSearchEngine === engine) {
+                        currentSearchEngine = 'google';
+                        settings.currentSearchEngine = 'google';
+                        document.querySelectorAll('.dropdown-option').forEach(opt => opt.classList.remove('active'));
+                        document.querySelector('[data-engine="google"]').classList.add('active');
+                        updateSearchEngineIcon();
+                        saveSettingsToStorage();
+                    }
+                }
+            });
+        }
     });
 
     // 点击外部关闭菜单
@@ -752,14 +784,36 @@ function setupSearch() {
                     <text x="12" y="16" text-anchor="middle" font-size="14" font-family="Arial" fill="#999">${name[0].toUpperCase()}</text>
                 </svg>
                 <span>${name}</span>
+                <button class="delete-engine-btn" title="Delete">×</button>
             `;
             
             // 插入到分隔线之前
             const divider = document.querySelector('.dropdown-divider');
             divider.parentNode.insertBefore(newOption, divider);
             
-            // 为新选项添加点击事件
+            // 为新选项添加删除按钮事件
+            const deleteBtn = newOption.querySelector('.delete-engine-btn');
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (confirm(`确定删除"${name}"吗？`)) {
+                    delete searchEngines[engineKey];
+                    newOption.remove();
+                    
+                    // 如果删除的是当前搜索引擎，切换到Google
+                    if (currentSearchEngine === engineKey) {
+                        currentSearchEngine = 'google';
+                        settings.currentSearchEngine = 'google';
+                        document.querySelectorAll('.dropdown-option').forEach(opt => opt.classList.remove('active'));
+                        document.querySelector('[data-engine="google"]').classList.add('active');
+                        updateSearchEngineIcon();
+                        saveSettingsToStorage();
+                    }
+                }
+            });
+            
+            // 为新选项添加点击事件（选择搜索引擎）
             newOption.addEventListener('click', (e) => {
+                if (e.target.classList.contains('delete-engine-btn')) return;
                 e.stopPropagation();
                 currentSearchEngine = engineKey;
                 settings.currentSearchEngine = engineKey;

@@ -222,15 +222,41 @@ body::after {
     transition: background-color 0.15s;
     color: #333;
     font-size: 14px;
+    position: relative;
 }
 
 .dropdown-option:hover {
     background-color: #f5f5f5;
 }
 
+.dropdown-option:hover .delete-engine-btn {
+    display: block !important;
+}
+
 .dropdown-option.active {
     background-color: #e8f0fe;
     color: #1f2937;
+}
+
+.delete-engine-btn {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: none;
+    color: #999;
+    cursor: pointer;
+    font-size: 18px;
+    padding: 0;
+    display: none;
+    transition: color 0.15s;
+}
+
+.delete-engine-btn:hover {
+    color: #ef5350;
 }
 
 .dropdown-icon {
