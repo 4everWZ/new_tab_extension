@@ -1,0 +1,248 @@
+/* ==================== 搜索框和搜索引擎下拉菜单样式 ==================== */
+
+/* 搜索类型选项卡 */
+.search-types {
+    display: flex;
+    gap: 40px;
+    justify-content: center;
+    font-size: 16px;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 20px;
+}
+
+.search-type-btn {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 0;
+    transition: color 0.2s;
+    font-family: inherit;
+}
+
+.search-type-btn:hover,
+.search-type-btn.active {
+    color: white;
+}
+
+/* 搜索框容器 */
+.search-box-wrapper {
+    position: relative;
+    width: var(--search-width, 60%);
+    max-width: 700px;
+    min-width: 300px;
+    margin: 0 auto;
+}
+
+/* 搜索框 */
+.search-box {
+    background: rgba(240, 242, 245, var(--search-opacity, 0.95));
+    border-radius: var(--search-radius, 50px);
+    padding: calc(var(--search-height, 44px) * 0.15) calc(var(--search-height, 44px) * 0.35);
+    display: flex;
+    align-items: center;
+    width: 100%;
+    height: var(--search-height, 44px);
+    max-width: 700px;
+    min-width: 300px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    gap: calc(var(--search-height, 44px) * 0.15);
+    border: none;
+    position: relative;
+    z-index: 10;
+    margin: 0 auto;
+    transition: none;
+}
+
+.search-box.hidden {
+    display: none;
+}
+
+.search-box.focused {
+    background: rgba(255, 255, 255, 1);
+}
+
+/* 搜索引擎选择器 */
+.search-engine-selector {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    position: relative;
+    flex-shrink: 0;
+    cursor: pointer;
+}
+
+.search-engine-dropdown-toggle {
+    width: 12px;
+    height: 8px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath fill='%23999' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-size: contain;
+    transition: transform 0.2s;
+}
+
+.search-engine-selector.active .search-engine-dropdown-toggle {
+    transform: rotate(180deg);
+}
+
+/* 搜索引擎图标 */
+.search-engine-icon {
+    width: calc(var(--search-height, 44px) * 0.8);
+    height: calc(var(--search-height, 44px) * 0.8);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    z-index: 1;
+    line-height: 1;
+}
+
+.search-engine-icon .icon-svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.search-engine-icon img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+/* 搜索输入框 */
+#search-input {
+    border: none;
+    background: transparent;
+    flex-grow: 1;
+    font-size: calc(var(--search-height, 44px) * 0.35);
+    outline: none;
+    color: #333;
+    padding: 0;
+    font-family: inherit;
+}
+
+#search-input::placeholder {
+    color: #aaa;
+}
+
+#search-input:focus {
+    color: #333;
+}
+
+/* 自定义下拉菜单 */
+.search-engine-dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 12px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    min-width: 200px;
+    display: none;
+    opacity: 0;
+    transform: translateY(-10px);
+    transition: all 0.2s ease;
+    z-index: 1000;
+    overflow: hidden;
+}
+
+.search-engine-dropdown-menu.show {
+    display: block;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* 下拉菜单选项 */
+.dropdown-options {
+    padding: 8px 0;
+}
+
+.dropdown-option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    cursor: pointer;
+    transition: background-color 0.15s;
+    color: #333;
+    font-size: 14px;
+    position: relative;
+}
+
+.dropdown-option:hover {
+    background-color: #f5f5f5;
+}
+
+.dropdown-option:hover .delete-engine-btn {
+    display: block !important;
+}
+
+.dropdown-option.active {
+    background-color: #e8f0fe;
+    color: #1f2937;
+}
+
+/* 删除搜索引擎按钮 */
+.delete-engine-btn {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: none;
+    color: #999;
+    cursor: pointer;
+    font-size: 18px;
+    padding: 0;
+    display: none;
+    transition: color 0.15s;
+}
+
+.delete-engine-btn:hover {
+    color: #ef5350;
+}
+
+/* 下拉菜单图标 */
+.dropdown-icon {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dropdown-icon img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+/* 分隔线 */
+.dropdown-divider {
+    height: 1px;
+    background-color: #e5e5e5;
+    margin: 4px 0;
+}
+
+/* 添加搜索引擎按钮 */
+.dropdown-add {
+    padding: 10px 16px;
+    text-align: center;
+    cursor: pointer;
+    font-size: 13px;
+    color: #666;
+    transition: background-color 0.15s;
+}
+
+.dropdown-add:hover {
+    background-color: #f9f9f9;
+    color: #999;
+}

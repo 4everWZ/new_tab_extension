@@ -1,0 +1,465 @@
+/* ==================== 响应式设计样式 ==================== */
+
+/* 平板和较小的桌面屏幕 */
+@media (max-width: 1024px) {
+    .container {
+        padding: 60px 30px 30px;
+        gap: 25px;
+    }
+
+    #apps-container,
+    .grid-container {
+        grid-template-columns: repeat(var(--grid-columns, 4), auto);
+        gap: 40px;
+    }
+
+    .app-icon {
+        width: var(--icon-size, 90px);
+        height: var(--icon-size, 90px);
+        font-size: 36px;
+    }
+
+    .search-box {
+        width: 90%;
+        max-width: 600px;
+    }
+}
+
+/* 平板 (768px - 1024px) */
+@media (max-width: 768px) {
+    .container {
+        padding: 80px 20px 20px;
+        gap: 30px;
+    }
+
+    #apps-container,
+    .grid-container {
+        grid-template-columns: repeat(var(--grid-columns, 4), 1fr);
+        gap: 30px;
+        width: 100%;
+        padding: 0 20px;
+    }
+
+    .search-box {
+        max-width: 90%;
+        min-width: 250px;
+    }
+
+    .search-box-wrapper {
+        width: 95%;
+    }
+
+    .search-types {
+        gap: 20px;
+        font-size: 14px;
+        flex-wrap: wrap;
+    }
+
+    .search-type-btn {
+        font-size: 14px;
+    }
+
+    .app-icon {
+        width: var(--icon-size, 80px);
+        height: var(--icon-size, 80px);
+        font-size: 32px;
+        margin-bottom: 12px;
+    }
+
+    .app-name {
+        font-size: var(--text-size, 12px);
+    }
+
+    .sidebar {
+        width: 100%;
+        right: -100%;
+    }
+
+    .sidebar.open {
+        right: 0;
+    }
+
+    #sidebar-toggle,
+    .wallpaper-refresh-btn {
+        width: 38px;
+        height: 38px;
+        font-size: 18px;
+    }
+
+    .modal-content {
+        width: 95%;
+        max-height: 95vh;
+        padding: 20px;
+    }
+
+    .pagination {
+        gap: 10px;
+        margin-top: 20px;
+    }
+
+    .dot {
+        width: 8px;
+        height: 8px;
+    }
+}
+
+/* 手机 (480px - 768px) */
+@media (max-width: 480px) {
+    .container {
+        padding: 70px 15px 15px;
+        gap: 25px;
+    }
+
+    #apps-container,
+    .grid-container {
+        grid-template-columns: repeat(var(--grid-columns, 3), 1fr);
+        gap: 25px;
+        width: 100%;
+        padding: 0 10px;
+    }
+
+    .search-box {
+        width: 100%;
+        max-width: none;
+        min-width: auto;
+        height: 40px;
+    }
+
+    .search-box-wrapper {
+        width: 100%;
+        max-width: none;
+        min-width: auto;
+        margin: 0 15px;
+    }
+
+    #search-input {
+        font-size: 14px;
+    }
+
+    #search-input::placeholder {
+        font-size: 14px;
+    }
+
+    .search-types {
+        gap: 15px;
+        font-size: 12px;
+        margin-bottom: 15px;
+    }
+
+    .search-type-btn {
+        font-size: 12px;
+        padding: 0;
+    }
+
+    .app-icon {
+        width: var(--icon-size, 70px);
+        height: var(--icon-size, 70px);
+        font-size: 28px;
+        margin-bottom: 10px;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+    }
+
+    .app-name {
+        font-size: var(--text-size, 11px);
+        max-width: 80px;
+    }
+
+    .app-item:hover {
+        transform: scale(1.05);
+    }
+
+    .app-item.drag-over {
+        transform: scale(1.08);
+    }
+
+    .sidebar {
+        width: 100%;
+        right: -100%;
+    }
+
+    .sidebar.open {
+        right: 0;
+    }
+
+    .sidebar-content {
+        padding: 15px;
+    }
+
+    #sidebar-toggle {
+        width: 36px;
+        height: 36px;
+        font-size: 16px;
+        right: 15px;
+        top: 15px;
+    }
+
+    .wallpaper-refresh-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 16px;
+        right: 60px;
+        top: 15px;
+    }
+
+    .modal-content {
+        width: 90%;
+        max-height: 90vh;
+        padding: 15px;
+    }
+
+    .modal-header {
+        margin-bottom: 15px;
+        padding-bottom: 12px;
+    }
+
+    .modal-title {
+        font-size: 16px;
+    }
+
+    .modal-close {
+        font-size: 20px;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        font-size: 14px;
+        padding: 8px;
+    }
+
+    .btn-primary,
+    .btn-secondary,
+    .btn-danger {
+        padding: 8px 16px;
+        font-size: 12px;
+        margin-top: 8px;
+    }
+
+    .grid-presets {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .color-palette {
+        gap: 6px;
+    }
+
+    .color-btn {
+        width: 28px;
+        height: 28px;
+    }
+
+    .pagination {
+        gap: 8px;
+        margin-top: 15px;
+    }
+
+    .dot {
+        width: 6px;
+        height: 6px;
+    }
+
+    .settings-section {
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+    }
+
+    .settings-section h4 {
+        font-size: 12px;
+        margin-bottom: 10px;
+    }
+
+    .setting-item {
+        margin-bottom: 12px;
+        gap: 8px;
+    }
+
+    .setting-item label {
+        font-size: 12px;
+    }
+
+    .dropdown-option {
+        padding: 8px 12px;
+        font-size: 13px;
+        gap: 10px;
+    }
+
+    .delete-engine-btn {
+        width: 20px;
+        height: 20px;
+        font-size: 16px;
+    }
+}
+
+/* 非常小的手机屏幕 (< 480px) */
+@media (max-width: 360px) {
+    .container {
+        padding: 60px 10px 10px;
+        gap: 20px;
+    }
+
+    #apps-container,
+    .grid-container {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+    }
+
+    .search-box {
+        height: 38px;
+    }
+
+    .search-box-wrapper {
+        margin: 0 10px;
+    }
+
+    .app-icon {
+        width: var(--icon-size, 60px);
+        height: var(--icon-size, 60px);
+        font-size: 24px;
+    }
+
+    .app-name {
+        font-size: var(--text-size, 10px);
+        max-width: 70px;
+    }
+
+    #sidebar-toggle,
+    .wallpaper-refresh-btn {
+        width: 34px;
+        height: 34px;
+        font-size: 14px;
+    }
+
+    .modal-content {
+        width: 95%;
+    }
+
+    .sidebar-header {
+        padding: 15px;
+    }
+
+    .sidebar-content {
+        padding: 12px;
+    }
+}
+
+/* 暗色模式支持 */
+@media (prefers-color-scheme: dark) {
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        background: var(--input-bg, #2a2a2a);
+        color: var(--text-color, #ffffff);
+        border-color: var(--border-color, #444);
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+    }
+
+    .sidebar {
+        background: var(--bg-color, rgba(30, 30, 30, 0.98));
+        color: var(--text-color, #ffffff);
+        border-left: 1px solid var(--border-color, #444);
+    }
+
+    .sidebar-header {
+        border-bottom-color: var(--border-color, #444);
+        background: var(--bg-color, #1e1e1e);
+    }
+
+    .sidebar-tab {
+        color: rgba(255, 255, 255, 0.6);
+    }
+
+    .sidebar-tab.active {
+        color: white;
+    }
+
+    .settings-section {
+        border-bottom-color: var(--border-color, #444);
+    }
+
+    .modal-content {
+        background: var(--bg-color, #1e1e1e);
+        color: var(--text-color, #ffffff);
+    }
+
+    .modal-header {
+        border-bottom-color: var(--border-color, #444);
+    }
+
+    .modal-footer {
+        border-top-color: var(--border-color, #444);
+    }
+
+    .dropdown-option {
+        color: var(--text-color, #ffffff);
+    }
+
+    .dropdown-option:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .dropdown-option.active {
+        background-color: rgba(102, 126, 234, 0.3);
+    }
+}
+
+/* 高分辨率屏幕 */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    .app-icon,
+    .search-engine-icon {
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    .sidebar {
+        box-shadow: -2px 0 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .modal-content {
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+    }
+}
+
+/* 横屏模式 */
+@media (max-height: 600px) and (orientation: landscape) {
+    .container {
+        padding: 40px 20px 20px;
+        gap: 20px;
+    }
+
+    .app-icon {
+        width: var(--icon-size, 60px);
+        height: var(--icon-size, 60px);
+        font-size: 24px;
+        margin-bottom: 8px;
+    }
+
+    .app-name {
+        font-size: var(--text-size, 10px);
+    }
+
+    .search-types {
+        margin-bottom: 10px;
+        gap: 20px;
+    }
+}
+
+/* 打印样式 */
+@media print {
+    .sidebar-toggle-btn,
+    .wallpaper-refresh-btn,
+    #sidebar,
+    .modal,
+    .notification {
+        display: none !important;
+    }
+
+    .container {
+        background: white;
+        color: black;
+    }
+}
