@@ -108,10 +108,18 @@ export class SearchManager {
         // 生成图标HTML
         let iconHtml = '<svg class="dropdown-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="11" fill="#cccccc"/><text x="12" y="16" text-anchor="middle" font-size="14" font-weight="bold" fill="white">?</text></svg>';
         
-        if (this.searchEngineIconsData[key]) {
-            iconHtml = `<img src="${this.searchEngineIconsData[key]}" alt="${key}" class="dropdown-icon">`;
-        } else if (this.searchEngineIcons[key]) {
-            iconHtml = this.searchEngineIcons[key];
+        if (this.searchEngineIcons[key]) {
+            // searchEngineIcons contains data URLs or SVG strings
+            const icon = this.searchEngineIcons[key];
+            if (icon.startsWith('data:image')) {
+                iconHtml = `<img src="${icon}" alt="${key}" class="dropdown-icon">`;
+            } else {
+                iconHtml = icon;
+            }
+        } else if (this.searchEngineIconsData[key]) {
+            // searchEngineIconsData contains {color, text} objects for built-in engines
+            const data = this.searchEngineIconsData[key];
+            iconHtml = `<span class="dropdown-icon text-icon" style="background-color: ${data.color};">${data.text}</span>`;
         }
         
         const nameText = this.formatEngineName(key);
@@ -177,10 +185,18 @@ export class SearchManager {
         
         const engine = this.currentSearchEngine;
         
-        if (this.searchEngineIconsData[engine]) {
-            this.searchEngineIcon.innerHTML = `<img src="${this.searchEngineIconsData[engine]}" alt="${engine}" style="width: 24px; height: 24px;">`;
-        } else if (this.searchEngineIcons[engine]) {
-            this.searchEngineIcon.innerHTML = this.searchEngineIcons[engine];
+        if (this.searchEngineIcons[engine]) {
+            // searchEngineIcons contains data URLs or SVG strings
+            const icon = this.searchEngineIcons[engine];
+            if (icon.startsWith('data:image')) {
+                this.searchEngineIcon.innerHTML = `<img src="${icon}" alt="${engine}" style="width: 24px; height: 24px;">`;
+            } else {
+                this.searchEngineIcon.innerHTML = icon;
+            }
+        } else if (this.searchEngineIconsData[engine]) {
+            // searchEngineIconsData contains {color, text} objects
+            const data = this.searchEngineIconsData[engine];
+            this.searchEngineIcon.innerHTML = `<span class="text-icon" style="background-color: ${data.color}; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 3px;">${data.text}</span>`;
         } else {
             // 默认图标
             this.searchEngineIcon.innerHTML = '<svg class="icon-svg" viewBox="1 1 22 22" xmlns="http://www.w3.org/2000/svg" style="overflow: visible;"><circle cx="12" cy="12" r="11" fill="#cccccc"/><text x="12" y="12" text-anchor="middle" dominant-baseline="central" font-size="14" font-weight="bold" fill="white">?</text></svg>';
@@ -197,12 +213,14 @@ export class SearchManager {
         const query = this.searchInput.value.trim();
         if (!query) return;
         
-        const engineUrl = this.searchEngines[this.currentSearchEngine];
-        if (!engineUrl) {
+        const engineData = this.searchEngines[this.currentSearchEngine];
+        if (!engineData) {
             console.error('[Search] Invalid search engine:', this.currentSearchEngine);
             return;
         }
         
+        // engineData can be either a string URL (for custom engines) or an object with .web property
+        const engineUrl = typeof engineData === 'string' ? engineData : engineData.web;
         const searchUrl = formatSearchEngineUrl(engineUrl, query);
         window.open(searchUrl, '_blank');
         console.log('[Search] Opened search URL:', searchUrl);
