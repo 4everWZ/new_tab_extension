@@ -1,4 +1,7 @@
-const i18nStrings = {
+(() => {
+    'use strict';
+
+    const i18nStrings = {
     en: {
         web: 'Web',
         images: 'Images',
@@ -93,85 +96,116 @@ const i18nStrings = {
         language: '语言',
         parse_url: '解析'
     }
-};
-
-let currentLanguage = 'en';
-
-function initI18n() {
-    // 从 storage 读取语言设置
-    chrome.storage.local.get(['language'], (result) => {
-        if (result.language) {
-            currentLanguage = result.language;
-        }
-        updatePageLanguage();
-    });
-}
-
-function setLanguage(lang) {
-    currentLanguage = lang;
-    chrome.storage.local.set({ language: lang });
-    updatePageLanguage();
-}
-
-function t(key) {
-    return i18nStrings[currentLanguage][key] || i18nStrings['en'][key] || key;
-}
-
-function updatePageLanguage() {
-    // 更新所有带 data-i18n 属性的元素
-    document.querySelectorAll('[data-i18n]').forEach(el => {
-        const key = el.getAttribute('data-i18n');
-        el.textContent = t(key);
-    });
-
-    // 更新 input placeholder
-    const searchInput = document.getElementById('search-input');
-    if (searchInput) {
-        searchInput.placeholder = currentLanguage === 'zh' ? '搜索...' : 'Search...';
-    }
-
-    const appName = document.getElementById('app-name');
-    if (appName) {
-        appName.placeholder = currentLanguage === 'zh' ? '网站名称' : 'Website name';
-    }
-
-    const appUrl = document.getElementById('app-url');
-    if (appUrl) {
-        appUrl.placeholder = 'https://example.com';
-    }
-
-    const appText = document.getElementById('app-text');
-    if (appText) {
-        appText.placeholder = 'B';
-    }
-
-    // 更新 select 选项的显示文本
-    document.getElementById('language-select').value = currentLanguage;
-
-    // 更新 search type select
-    updateSearchTypeOptions();
-}
-
-function updateSearchTypeOptions() {
-    const searchTypeSelect = document.getElementById('search-type-select');
-    if (!searchTypeSelect) return;
-
-    const options = {
-        web: currentLanguage === 'zh' ? '网页' : 'Web',
-        images: currentLanguage === 'zh' ? '图片' : 'Images',
-        news: currentLanguage === 'zh' ? '新闻' : 'News',
-        video: currentLanguage === 'zh' ? '视频' : 'Video',
-        maps: currentLanguage === 'zh' ? '地图' : 'Maps'
     };
 
-    Array.from(searchTypeSelect.options).forEach(option => {
-        option.textContent = options[option.value] || option.value;
-    });
-}
+    /**
+     * NOTE: We intentionally keep a small global surface area for backwards
+     * compatibility: `t`, `setLanguage`, and `currentLanguage`.
+     */
+    let currentLanguage = 'en';
 
-// 初始化
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initI18n);
-} else {
-    initI18n();
-}
+    function getLanguage() {
+        return currentLanguage;
+    }
+
+    function t(key) {
+        return i18nStrings[currentLanguage]?.[key] ?? i18nStrings.en?.[key] ?? key;
+    }
+
+    function updateSearchTypeOptions() {
+        const searchTypeSelect = document.getElementById('search-type-select');
+        if (!searchTypeSelect) return;
+
+        const options = {
+            web: currentLanguage === 'zh' ? '网页' : 'Web',
+            images: currentLanguage === 'zh' ? '图片' : 'Images',
+            news: currentLanguage === 'zh' ? '新闻' : 'News',
+            video: currentLanguage === 'zh' ? '视频' : 'Video',
+            maps: currentLanguage === 'zh' ? '地图' : 'Maps',
+        };
+
+        Array.from(searchTypeSelect.options).forEach((option) => {
+            option.textContent = options[option.value] || option.value;
+        });
+    }
+
+    function updatePageLanguage() {
+        // 更新所有带 data-i18n 属性的元素
+        document.querySelectorAll('[data-i18n]').forEach((el) => {
+            const key = el.getAttribute('data-i18n');
+            el.textContent = t(key);
+        });
+
+        // 更新 input placeholder
+        const searchInput = document.getElementById('search-input');
+        if (searchInput) {
+            searchInput.placeholder = currentLanguage === 'zh' ? '搜索...' : 'Search...';
+        }
+
+        const appName = document.getElementById('app-name');
+        if (appName) {
+            appName.placeholder = currentLanguage === 'zh' ? '网站名称' : 'Website name';
+        }
+
+        const appUrl = document.getElementById('app-url');
+        if (appUrl) {
+            appUrl.placeholder = 'https://example.com';
+        }
+
+        const appText = document.getElementById('app-text');
+        if (appText) {
+            appText.placeholder = 'B';
+        }
+
+        const languageSelect = document.getElementById('language-select');
+        if (languageSelect) {
+            languageSelect.value = currentLanguage;
+        }
+
+        updateSearchTypeOptions();
+    }
+
+    function setLanguage(lang) {
+        currentLanguage = lang;
+        chrome.storage.local.set({ language: lang });
+        updatePageLanguage();
+    }
+
+    function initI18n() {
+        // 从 storage 读取语言设置
+        chrome.storage.local.get(['language'], (result) => {
+            if (result.language) {
+                currentLanguage = result.language;
+            }
+            updatePageLanguage();
+        });
+    }
+
+    // Backwards compatible globals
+    globalThis.t = t;
+    globalThis.setLanguage = setLanguage;
+    // Some code may read/write this; we keep it in sync via accessor.
+    Object.defineProperty(globalThis, 'currentLanguage', {
+        configurable: true,
+        get: () => currentLanguage,
+        set: (lang) => {
+            currentLanguage = lang;
+        },
+    });
+
+    // Optional namespace for newer code
+    globalThis.i18n = {
+        t,
+        setLanguage,
+        getLanguage,
+        initI18n,
+        updatePageLanguage,
+    };
+
+    // 初始化
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initI18n);
+    } else {
+        initI18n();
+    }
+})();
