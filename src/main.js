@@ -146,7 +146,7 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
         
         // 如果搜索引擎更改，重新加载
         if (changes.searchEngines || changes.searchEngineIcons) {
-            searchManager.populateSearchEngineDropdown();
+            searchManager.setupSearchEngineDropdown();
         }
         
         // 如果应用更改，重新加载
