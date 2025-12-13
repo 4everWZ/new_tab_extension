@@ -385,12 +385,16 @@ export function enterEditMode(ctx, index) {
 }
 
 function exitEditModeOnClick(ctx, e) {
+    // If an overlay modal is open (e.g. icon editor), don't exit edit mode.
+    if (e.target?.closest?.('.modal-overlay')) return;
     const itemClicked = e.target.closest('.app-item');
     if (itemClicked && ctx.dom.grid.contains(itemClicked)) return;
     exitEditMode(ctx);
 }
 
 function exitEditModeOnContextMenu(ctx, e) {
+    // If an overlay modal is open (e.g. icon editor), don't exit edit mode.
+    if (e.target?.closest?.('.modal-overlay')) return;
     const itemClicked = e.target.closest('.app-item');
     if (itemClicked && ctx.dom.grid.contains(itemClicked)) return;
     exitEditMode(ctx);
@@ -554,7 +558,9 @@ export function editAppIcon(ctx, index) {
 
     let selectedIconType = currentIconType;
     let selectedIconStyle = currentIconStyle;
-    let selectedFaviconUrl = '';
+    // Keep current selection as default so clicking "Save" without changes
+    // doesn't reset the icon.
+    let selectedFaviconUrl = currentIconType === 'icon' ? (app.img || '') : '';
 
     iconOptions.forEach((option) => {
         option.addEventListener('click', () => {
@@ -615,7 +621,7 @@ export function editAppIcon(ctx, index) {
         document.body.removeChild(modal);
     });
 
-    saveBtn?.addEventListener('click', () => {
+    saveBtn?.addEventListener('click', async () => {
         const target = ctx.state.allApps[index];
         target.url = urlInput.value.trim() || app.url;
         target.name = nameInput.value.trim() || app.name;
@@ -634,50 +640,54 @@ export function editAppIcon(ctx, index) {
         }
 
         if (selectedIconType === 'upload') {
-            target.img = imgInput.value.trim() || '';
+            const raw = imgInput.value.trim() || '';
             target.text = '';
             target.color = '';
 
-            if (target.img) {
-                checkImageTransparency(target.img).then((hasTransparency) => {
-                    target.isTransparent = hasTransparency;
-                    ctx.actions.saveApps();
-                    renderGrid(ctx);
-                });
-            } else {
+            if (!raw) {
+                target.img = '';
                 target.isTransparent = undefined;
                 ctx.actions.saveApps();
                 renderGrid(ctx);
+                document.body.removeChild(modal);
+                return;
             }
 
+            // Prefer caching as data URL when possible.
+            const cached = raw.startsWith('data:') ? raw : await convertImageToDataUrl(raw);
+            target.img = cached;
+            target.isTransparent = await checkImageTransparency(cached);
+            ctx.actions.saveApps();
+            renderGrid(ctx);
             document.body.removeChild(modal);
             return;
         }
 
         if (selectedIconType === 'icon') {
-            target.img = selectedFaviconUrl;
+            // If user didn't click a different option, keep current icon.
+            const chosen = selectedFaviconUrl || app.img || '';
             target.text = '';
             target.color = '';
 
-            if (selectedFaviconUrl === app.img && app.isTransparent !== undefined) {
-                target.isTransparent = app.isTransparent;
+            if (!chosen) {
+                // Nothing to save; keep whatever is currently persisted.
                 ctx.actions.saveApps();
                 renderGrid(ctx);
                 document.body.removeChild(modal);
                 return;
             }
 
-            if (selectedFaviconUrl) {
-                checkImageTransparency(selectedFaviconUrl).then((hasTransparency) => {
-                    target.isTransparent = hasTransparency;
-                    ctx.actions.saveApps();
-                    renderGrid(ctx);
-                });
-                document.body.removeChild(modal);
-                return;
+            // Cache to data URL to avoid network failures.
+            const cached = chosen.startsWith('data:') ? chosen : await convertImageToDataUrl(chosen);
+            target.img = cached;
+
+            // Reuse stored transparency if it's the same image and known.
+            if (chosen === app.img && app.isTransparent !== undefined) {
+                target.isTransparent = app.isTransparent;
+            } else {
+                target.isTransparent = await checkImageTransparency(cached);
             }
 
-            target.isTransparent = undefined;
             ctx.actions.saveApps();
             renderGrid(ctx);
             document.body.removeChild(modal);
