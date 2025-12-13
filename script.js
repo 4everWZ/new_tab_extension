@@ -244,6 +244,7 @@ function convertImageToDataUrl(imageUrl) {
                 const width = img.naturalWidth || img.width;
                 const height = img.naturalHeight || img.height;
                 if (!width || !height) {
+                    console.warn('[convertImageToDataUrl] Invalid image dimensions:', { width, height });
                     resolve(imageUrl); // 转换失败，返回原 URL
                     return;
                 }
@@ -252,14 +253,36 @@ function convertImageToDataUrl(imageUrl) {
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, width, height);
                 const dataUrl = canvas.toDataURL('image/png');
+                console.log('[convertImageToDataUrl] ✓ Converted to data URL, size:', (dataUrl.length / 1024).toFixed(2) + 'KB');
                 resolve(dataUrl);
             } catch (e) {
+                console.error('[convertImageToDataUrl] Conversion error:', e);
                 resolve(imageUrl); // 转换失败，返回原 URL
             }
         };
         
         img.onerror = () => {
+            console.warn('[convertImageToDataUrl] Failed to load image:', imageUrl);
             resolve(imageUrl); // 加载失败，返回原 URL
+        };
+        
+        img.onabort = () => {
+            console.warn('[convertImageToDataUrl] Image loading aborted:', imageUrl);
+            resolve(imageUrl);
+        };
+        
+        // 设置 5 秒超时
+        const timeout = setTimeout(() => {
+            console.warn('[convertImageToDataUrl] Image loading timeout:', imageUrl);
+            img.src = '';
+            resolve(imageUrl);
+        }, 5000);
+        
+        // 成功加载后清除超时
+        const originalOnload = img.onload;
+        img.onload = function() {
+            clearTimeout(timeout);
+            originalOnload.call(this);
         };
         
         img.src = imageUrl;
@@ -1643,14 +1666,26 @@ function renderGrid() {
         }
 
         if (app.iconType === 'icon' && app.img) {
-            // 网络图标 - icon1 或 icon2
+            // 网络图标 - 应该是 data URL 格式
+            // 直接设置背景图片，如果加载失败会自动回退
             icon.style.backgroundImage = `url(${app.img})`;
-            // 根据保存的透明度标记添加背景色
             if (!app.isTransparent) {
                 icon.style.backgroundColor = '#f0f0f0';
             }
             icon.style.backgroundSize = 'cover';
             icon.style.backgroundPosition = 'center';
+            
+            // 如果是普通 URL（非 data URL），添加错误处理
+            if (!app.img.startsWith('data:')) {
+                const onerror = () => {
+                    // 网络图标加载失败，回退到文本
+                    icon.style.backgroundImage = 'none';
+                    icon.style.backgroundColor = app.color || '#ccc';
+                    icon.innerText = app.text || app.name[0];
+                    item.removeEventListener('error', onerror);
+                };
+                item.addEventListener('error', onerror);
+            }
         } else if (app.iconType === 'upload' && app.img) {
             // 上传的本地图标
             icon.style.backgroundImage = `url(${app.img})`;
