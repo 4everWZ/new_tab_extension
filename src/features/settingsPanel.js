@@ -125,6 +125,9 @@ export function setupSettingsModalUIValues(ctx) {
     const hideSearchBar = document.getElementById('hide-search-bar');
     if (hideSearchBar) hideSearchBar.checked = settings.hideSearchBar;
 
+    const openShortcutInNewTab = document.getElementById('open-shortcut-in-newtab');
+    if (openShortcutInNewTab) openShortcutInNewTab.checked = !!settings.openShortcutInNewTab;
+
     const languageSelect = document.getElementById('language-select');
     if (languageSelect && window.currentLanguage) {
         languageSelect.value = window.currentLanguage;
@@ -245,6 +248,13 @@ export function setupSettingsPanel(ctx) {
             settings.gridCols = cols;
             ctx.actions.applySettings();
         }
+    });
+
+    // Shortcut open behavior
+    document.getElementById('open-shortcut-in-newtab')?.addEventListener('change', async (e) => {
+        settings.openShortcutInNewTab = e.target.checked;
+        await ctx.actions.saveSettings();
+        ctx.actions.render();
     });
 
     // Icon toggles

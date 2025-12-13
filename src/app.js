@@ -51,9 +51,12 @@ async function loadData(ctx) {
 
     // Settings
     if (result.settings) {
-        ctx.state.settings = { ...ctx.state.defaults.settings, ...result.settings };
+        // IMPORTANT: keep the settings object reference stable.
+        // Many UI handlers capture `ctx.state.settings` early; replacing it
+        // would make settings changes not persist / not take effect.
+        Object.assign(ctx.state.settings, ctx.state.defaults.settings, result.settings);
     } else {
-        ctx.state.settings = { ...ctx.state.defaults.settings };
+        Object.assign(ctx.state.settings, ctx.state.defaults.settings);
         await storageSet({ settings: ctx.state.settings });
     }
 

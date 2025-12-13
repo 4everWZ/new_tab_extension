@@ -49,6 +49,13 @@
   - **Language**: Select language (currently only Chinese available)
 - Changes should apply immediately
 
+##### Shortcut Open Behavior
+- In Settings, toggle **在新标签页打开快捷方式**
+- Click a shortcut in the grid
+- Expected:
+  - ON: opens the site in a new tab and keeps the New Tab page
+  - OFF: opens the site in the current tab
+
 #### 5. Wallpaper Management
 - In Settings, change Wallpaper Source to "Local"
 - Click "Upload Wallpaper"

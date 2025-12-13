@@ -30,6 +30,8 @@ export const DEFAULT_SETTINGS = {
     textSize: 14,
     textColor: '#ffffff',
     currentSearchEngine: 'google',
+    // When true, clicking a shortcut opens in a new tab (keeps the New Tab page).
+    openShortcutInNewTab: false,
 };
 
 export const DEFAULT_SEARCH_ENGINES = {

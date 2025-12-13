@@ -268,7 +268,9 @@ export function renderGrid(ctx) {
         item.href = isEditMode ? 'javascript:void(0)' : app.url;
         item.className = 'app-item';
         if (isEditMode) item.classList.add('edit-mode');
-        item.target = '_self';
+        const openInNewTab = !!ctx.state.settings.openShortcutInNewTab;
+        item.target = !isEditMode && openInNewTab ? '_blank' : '_self';
+        if (!isEditMode && openInNewTab) item.rel = 'noopener noreferrer';
         item.dataset.index = realIndex;
 
         item.addEventListener('click', (e) => {
