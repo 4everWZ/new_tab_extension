@@ -61,6 +61,27 @@
 - Click the edit button (✎) to modify
 - Click the delete button (×) to remove
 
+##### Regression: Edit Mode + Icon Modal
+- Right-click a shortcut to enter **edit mode**
+- Click the icon edit action to open the **icon editor modal**
+- While the modal is open:
+  - Left click inside the modal (including icon options)
+  - Right click inside the modal
+  - Use any buttons/controls inside the modal
+- Expected: edit mode should **NOT** exit just because you interacted with the modal
+
+##### Regression: Save Without Changing Icon
+- Open the icon editor modal for an existing shortcut
+- Do **not** select a new icon option
+- Click **Save**
+- Expected: the shortcut icon remains unchanged (no fallback to default solid color)
+
+##### Regression: Icon Cached (No Network)
+- Set a shortcut icon via online icon option (favicon/network URL)
+- Reload the new tab page
+- Optional: temporarily go offline (or disable network) and reload again
+- Expected: the icon still renders (stored as a data URL in `chrome.storage.local`)
+
 #### 7. Drag & Drop
 - Click and drag shortcuts to reorder them
 - Changes should be saved automatically
