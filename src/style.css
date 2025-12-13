@@ -361,6 +361,9 @@ body::after {
     align-items: center;
     font-size: 40px;
     font-weight: 600;
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
     margin-bottom: 16px;
     background-size: cover;
     background-position: center;
@@ -475,12 +478,15 @@ body::after {
 }
 
 .app-name {
+    display: block;
+    width: var(--icon-size, 100px);
     font-size: var(--text-size, 14px);
     text-shadow: var(--text-shadow-enabled, 0 2px 4px rgba(0, 0, 0, 0.4));
     font-weight: 500;
     color: var(--text-color, white);
     transition: color 0.2s;
-    max-width: 100px;
+    text-align: center;
+    max-width: var(--icon-size, 100px);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
