@@ -14,7 +14,7 @@ Top-level files:
   2) `script.js` (`type="module"` entry)
 - `script.js`: Thin entry that imports `src/app.js`
 - `i18n.js`: IIFE-style script that still exports compatibility globals (`t`, `setLanguage`, `currentLanguage`)
-- `style.css`: Styling + app-ready gating to prevent FOUC
+- `src/style.css`: Styling + app-ready gating to prevent FOUC
 
 Module code (ES Modules) lives under `src/`:
 - `src/app.js`: App bootstrap; builds `ctx`, loads storage, applies settings, initializes features

@@ -344,10 +344,6 @@ body::after {
     cursor: grabbing;
 }
 
-.app-item.drag-over {
-    transform: scale(1.1);
-}
-
 .icon-container {
     position: relative;
     width: fit-content;
@@ -459,6 +455,7 @@ body::after {
 }
 
 .app-item.drag-over {
+    transform: scale(1.1);
     animation: squeezeRotate 0.4s ease-in-out;
 }
 
@@ -520,17 +517,16 @@ body::after {
 }
 
 /* 壁纸刷新按钮 */
-.wallpaper-refresh-btn {
+.wallpaper-refresh-btn,
+.sidebar-toggle-btn {
     position: fixed;
     top: 20px;
-    right: 70px;
     width: 40px;
     height: 40px;
     border-radius: 8px;
     background: rgba(255, 255, 255, 0.2);
     border: 1px solid rgba(255, 255, 255, 0.3);
     color: white;
-    font-size: 18px;
     cursor: pointer;
     transition: all 0.2s;
     display: flex;
@@ -539,7 +535,18 @@ body::after {
     z-index: 100;
 }
 
-.wallpaper-refresh-btn:hover {
+.wallpaper-refresh-btn {
+    right: 70px;
+    font-size: 18px;
+}
+
+.sidebar-toggle-btn {
+    right: 20px;
+    font-size: 20px;
+}
+
+.wallpaper-refresh-btn:hover,
+.sidebar-toggle-btn:hover {
     background: rgba(255, 255, 255, 0.3);
     transform: scale(1.05);
 }
@@ -549,29 +556,7 @@ body::after {
 }
 
 /* 右上角侧边栏打开/关闭按钮 */
-.sidebar-toggle-btn {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    width: 40px;
-    height: 40px;
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    color: white;
-    font-size: 20px;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 100;
-}
-
-.sidebar-toggle-btn:hover {
-    background: rgba(255, 255, 255, 0.3);
-    transform: scale(1.05);
-}
+/* (shared styles are defined above with .wallpaper-refresh-btn) */
 
 /* 侧边栏 */
 .sidebar {
@@ -743,7 +728,7 @@ body::after {
     cursor: pointer;
 }
 
-.color-btn {
+.icon-colors .color-btn {
     width: 100%;
     height: 40px;
     border: 2px solid #ddd;
@@ -752,11 +737,11 @@ body::after {
     transition: all 0.2s;
 }
 
-.color-btn:hover {
+.icon-colors .color-btn:hover {
     border-color: #667eea;
 }
 
-.color-btn.active {
+.icon-colors .color-btn.active {
     border-color: #667eea;
     box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
 }
@@ -894,7 +879,7 @@ body::after {
     flex-wrap: wrap;
 }
 
-.color-btn {
+.color-palette .color-btn {
     width: 32px;
     height: 32px;
     border: 2px solid #ddd;
@@ -903,11 +888,11 @@ body::after {
     transition: all 0.2s;
 }
 
-.color-btn:hover {
+.color-palette .color-btn:hover {
     transform: scale(1.1);
 }
 
-.color-btn.active {
+.color-palette .color-btn.active {
     border-color: #333;
     box-shadow: 0 0 0 2px white, 0 0 0 4px #333;
 }
