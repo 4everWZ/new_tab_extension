@@ -64,7 +64,7 @@ body::after {
 
 /* 容器 */
 .container {
-    display: flex;
+    display: none;
     flex-direction: column;
     align-items: center;
     justify-content: center;
@@ -72,6 +72,10 @@ body::after {
     max-width: 1200px;
     padding: 60px 40px 40px;
     gap: 30px;
+}
+
+.container.ready {
+    display: flex;
 }
 
 .container.hidden {

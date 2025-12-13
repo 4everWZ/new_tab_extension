@@ -49,6 +49,12 @@ async function initApp() {
         uiManager.setupWallpaperDelete(handleWallpaperDelete);
         
         console.log('[App] Application initialized successfully');
+        
+        // 显示主容器
+        const container = document.querySelector('.container');
+        if (container) {
+            container.classList.add('ready');
+        }
     } catch (error) {
         console.error('[App] Failed to initialize application:', error);
     }

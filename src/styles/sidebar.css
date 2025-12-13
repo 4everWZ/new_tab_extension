@@ -30,7 +30,7 @@
 }
 
 /* 右上角侧边栏打开/关闭按钮 */
-#sidebar-toggle {
+.sidebar-toggle-btn {
     position: fixed;
     top: 20px;
     right: 20px;
@@ -50,6 +50,11 @@
 }
 
 #sidebar-toggle:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.05);
+}
+
+.sidebar-toggle-btn:hover {
     background: rgba(255, 255, 255, 0.3);
     transform: scale(1.05);
 }

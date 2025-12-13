@@ -6,12 +6,14 @@
     width: 100%;
     display: flex;
     justify-content: center;
+    align-items: center;
     flex: 1;
+    overflow: auto;
 }
 
 .grid-container {
     display: grid;
-    grid-template-columns: repeat(var(--grid-columns, 5), auto);
+    grid-template-columns: repeat(var(--grid-cols, 5), auto);
     gap: 50px;
     justify-items: center;
     align-items: center;
@@ -20,9 +22,10 @@
     transition: none;
 }
 
-#apps-container {
+#apps-container,
+#grid {
     display: grid;
-    grid-template-columns: repeat(var(--grid-columns, 5), auto);
+    grid-template-columns: repeat(var(--grid-cols, 5), auto);
     gap: 50px;
     justify-items: center;
     align-items: center;
