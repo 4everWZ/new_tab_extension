@@ -47,6 +47,8 @@ async function loadData(ctx) {
         await storageSet({ apps: ctx.state.allApps });
     }
 
+    console.log(`[Shortcuts] Loaded ${ctx.state.allApps.length} apps from storage`);
+
     // Settings
     if (result.settings) {
         ctx.state.settings = { ...ctx.state.defaults.settings, ...result.settings };
@@ -54,6 +56,8 @@ async function loadData(ctx) {
         ctx.state.settings = { ...ctx.state.defaults.settings };
         await storageSet({ settings: ctx.state.settings });
     }
+
+    console.log('[Settings] Settings loaded successfully');
 
     // Search engine selection
     if (ctx.state.settings.currentSearchEngine) {
@@ -72,6 +76,10 @@ async function loadData(ctx) {
     applySettingsExceptMask(ctx);
     initializeGridPresets(ctx);
     setupSettingsModalUIValues(ctx);
+
+    // Reveal UI only after persisted settings are applied (prevents FOUC).
+    body.classList.add('app-ready');
+    ctx.dom.container?.classList.add('ready');
 
     // Custom engine options in dropdown
     restoreCustomEngineOptions(ctx);
@@ -93,8 +101,6 @@ async function loadData(ctx) {
         console.log('[Wallpaper] No wallpaper in storage, will load async');
         await loadWallpaper(ctx);
     }
-
-    ctx.dom.container?.classList.add('ready');
 
     render(ctx);
 }
@@ -127,6 +133,7 @@ export function initApp() {
 
     // Feature setup (listeners)
     setupSearch(ctx);
+    console.log('[Search] Search setup completed');
     setupWallpaperRefresh(ctx);
     setupSidebar(ctx);
     setupShortcutForm(ctx);
@@ -134,6 +141,8 @@ export function initApp() {
 
     // Load persisted state and render
     loadData(ctx);
+
+    console.log('[App] Application initialized successfully');
 }
 
 if (document.readyState === 'loading') {

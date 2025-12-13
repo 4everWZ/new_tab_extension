@@ -26,6 +26,14 @@ body {
     transition: none;
 }
 
+/* Prevent FOUC: hide UI until persisted settings are applied */
+body:not(.app-ready) .container,
+body:not(.app-ready) .sidebar,
+body:not(.app-ready) .sidebar-toggle-btn,
+body:not(.app-ready) .wallpaper-refresh-btn {
+    visibility: hidden;
+}
+
 /* 壁纸伪元素 - 显示壁纸背景 (带模糊效果) */
 body::before {
     content: '';

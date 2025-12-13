@@ -1,13 +1,14 @@
 import { compressImage } from '../utils/images.js';
 import { loadWallpaper, displayWallpaper } from './wallpaper.js';
 
+const GRID_PRESET_VALUES = [3, 4, 5, 6, 7];
+
 export function initializeGridPresets(ctx) {
     const { settings } = ctx.state;
     document.querySelectorAll('.grid-preset').forEach((btn) => {
         btn.classList.remove('active');
         if (btn.dataset.cols === 'custom') {
-            const presetValues = [3, 4, 5, 6, 8, 10];
-            if (!presetValues.includes(settings.gridCols)) {
+            if (!GRID_PRESET_VALUES.includes(settings.gridCols)) {
                 btn.classList.add('active');
                 document.getElementById('custom-cols-item')?.classList.remove('hidden');
                 const customCols = document.getElementById('custom-cols');
@@ -29,11 +30,10 @@ export function setupSettingsModalUIValues(ctx) {
     const { settings } = ctx.state;
 
     // Grid
-    const presetValues = [3, 4, 5, 6, 8, 10];
     document.querySelectorAll('.grid-preset').forEach((btn) => {
         btn.classList.remove('active');
         if (btn.dataset.cols === 'custom') {
-            if (!presetValues.includes(settings.gridCols)) {
+            if (!GRID_PRESET_VALUES.includes(settings.gridCols)) {
                 btn.classList.add('active');
                 document.getElementById('custom-cols-item')?.classList.remove('hidden');
                 const customCols = document.getElementById('custom-cols');
