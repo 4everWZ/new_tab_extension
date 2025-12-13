@@ -4,15 +4,7 @@ export class UIManager {
     constructor() {
         this.sidebar = document.getElementById('sidebar');
         this.sidebarToggle = document.getElementById('sidebar-toggle');
-        this.appTab = document.getElementById('app-tab');
-        this.wallpaperTab = document.getElementById('wallpaper-tab');
-        this.appContent = document.getElementById('app-content');
-        this.wallpaperContent = document.getElementById('wallpaper-content');
-        this.wallpaperUploadInput = document.getElementById('wallpaper-upload-input');
-        this.uploadWallpaperBtn = document.getElementById('upload-wallpaper-btn');
-        this.deleteWallpaperBtn = document.getElementById('delete-wallpaper-btn');
         this.searchInput = document.getElementById('search-input');
-        this.mainSearch = document.getElementById('main-search');
     }
 
     // 初始化 UI
@@ -26,29 +18,14 @@ export class UIManager {
             });
         }
         
-        // 标签页切换
-        if (this.appTab && this.wallpaperTab) {
-            this.appTab.addEventListener('click', () => {
-                this.switchTab('app');
-            });
-            
-            this.wallpaperTab.addEventListener('click', () => {
-                this.switchTab('wallpaper');
-            });
-        }
-        
-        // 搜索框焦点时隐藏按钮文本（移动端优化）
+        // 搜索框焦点时的处理
         if (this.searchInput) {
             this.searchInput.addEventListener('focus', () => {
-                if (this.mainSearch) {
-                    this.mainSearch.classList.add('focused');
-                }
+                // 可选：在移动端上做特殊处理
             });
             
             this.searchInput.addEventListener('blur', () => {
-                if (this.mainSearch) {
-                    this.mainSearch.classList.remove('focused');
-                }
+                // 可选处理
             });
         }
     }
@@ -56,27 +33,9 @@ export class UIManager {
     // 切换侧边栏
     toggleSidebar() {
         if (this.sidebar) {
-            this.sidebar.classList.toggle('collapsed');
+            this.sidebar.classList.toggle('open');
             console.log('[UI] Sidebar toggled');
         }
-    }
-
-    // 切换标签页
-    switchTab(tabName) {
-        // 更新标签页样式
-        if (tabName === 'app') {
-            if (this.appTab) this.appTab.classList.add('active');
-            if (this.wallpaperTab) this.wallpaperTab.classList.remove('active');
-            if (this.appContent) this.appContent.classList.add('active');
-            if (this.wallpaperContent) this.wallpaperContent.classList.remove('active');
-        } else if (tabName === 'wallpaper') {
-            if (this.appTab) this.appTab.classList.remove('active');
-            if (this.wallpaperTab) this.wallpaperTab.classList.add('active');
-            if (this.appContent) this.appContent.classList.remove('active');
-            if (this.wallpaperContent) this.wallpaperContent.classList.add('active');
-        }
-        
-        console.log('[UI] Switched to', tabName, 'tab');
     }
 
     // 显示通知
@@ -109,12 +68,15 @@ export class UIManager {
 
     // 处理壁纸上传
     setupWallpaperUpload(onUpload) {
-        if (this.uploadWallpaperBtn && this.wallpaperUploadInput) {
-            this.uploadWallpaperBtn.addEventListener('click', () => {
-                this.wallpaperUploadInput.click();
+        const uploadBtn = document.getElementById('wallpaper-upload-btn');
+        const fileInput = document.getElementById('wallpaper-file');
+        
+        if (uploadBtn && fileInput) {
+            uploadBtn.addEventListener('click', () => {
+                fileInput.click();
             });
             
-            this.wallpaperUploadInput.addEventListener('change', (e) => {
+            fileInput.addEventListener('change', (e) => {
                 const file = e.target.files[0];
                 if (file) {
                     onUpload(file);
@@ -125,13 +87,7 @@ export class UIManager {
 
     // 处理壁纸删除
     setupWallpaperDelete(onDelete) {
-        if (this.deleteWallpaperBtn) {
-            this.deleteWallpaperBtn.addEventListener('click', () => {
-                if (confirm('Delete current wallpaper?')) {
-                    onDelete();
-                }
-            });
-        }
+        // 可根据需要实现
     }
 
     // 关闭所有模态框（点击外部时）

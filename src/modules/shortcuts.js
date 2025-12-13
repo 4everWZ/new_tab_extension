@@ -6,20 +6,34 @@ import StorageManager from './storage.js';
 
 export class ShortcutManager {
     constructor() {
-        this.appsContainer = document.getElementById('apps-container');
-        this.addAppBtn = document.getElementById('add-app-btn');
-        this.appModal = document.getElementById('app-modal');
-        this.appNameInput = document.getElementById('app-name-input');
-        this.appUrlInput = document.getElementById('app-url-input');
-        this.appIconInput = document.getElementById('app-icon-input');
-        this.appIconSelect = document.getElementById('app-icon-select');
-        this.appIconColorInput = document.getElementById('app-icon-color-input');
-        this.appIconTextInput = document.getElementById('app-icon-text-input');
-        this.appIconPreview = document.getElementById('app-icon-preview');
+        // 应用容器（显示应用网格）
+        this.appsContainer = document.getElementById('grid');
+        
+        // 添加快捷方式表单元素
+        this.shortcutForm = document.getElementById('shortcut-form');
+        this.appNameInput = document.getElementById('app-name');
+        this.appUrlInput = document.getElementById('app-url');
+        this.appTextInput = document.getElementById('app-text');
+        this.appColorInput = document.getElementById('app-color');
+        this.appImageInput = document.getElementById('app-image');
+        this.imagePreview = document.getElementById('image-preview');
+        this.parseUrlBtn = document.getElementById('parse-url-btn');
+        
+        // 图标类型选择
+        this.iconTypeRadios = document.querySelectorAll('input[name="icon-type"]');
+        this.textIconOptions = document.getElementById('text-icon-options');
+        this.uploadIconOptions = document.getElementById('upload-icon-options');
         
         this.apps = [];
-        this.editingAppKey = null;
+        this.uploadedImageData = null;
         this.currentPage = 0;
+        
+        if (!this.appsContainer) {
+            console.warn('[Shortcuts] Apps container (#grid) not found');
+        }
+        if (!this.shortcutForm) {
+            console.warn('[Shortcuts] Shortcut form not found');
+        }
     }
 
     // 初始化快捷方式
@@ -39,38 +53,38 @@ export class ShortcutManager {
         }
         
         this.renderApps();
-        this.setupAddAppButton();
+        this.setupAddAppForm();
     }
 
     // 渲染快捷方式
     renderApps() {
+        if (!this.appsContainer) {
+            console.warn('[Shortcuts] Apps container not found, cannot render');
+            return;
+        }
+        
         this.appsContainer.innerHTML = '';
         
-        const start = this.currentPage * pageSize;
-        const end = start + pageSize;
-        const appsToShow = this.apps.slice(start, end);
-        
-        appsToShow.forEach((app, index) => {
+        this.apps.forEach((app, index) => {
             const appElement = document.createElement('div');
             appElement.className = 'app-item';
             appElement.draggable = true;
             
             const icon = this.getAppIconHtml(app);
-            const realIndex = start + index;
             
             appElement.innerHTML = `
                 <div class="app-icon">${icon}</div>
                 <div class="app-name" title="${app.name}">${app.name}</div>
                 <div class="app-actions">
-                    <button class="app-edit-btn" data-index="${realIndex}">✎</button>
-                    <button class="app-delete-btn" data-index="${realIndex}">×</button>
+                    <button class="app-edit-btn" data-index="${index}">✎</button>
+                    <button class="app-delete-btn" data-index="${index}">×</button>
                 </div>
             `;
             
             // 拖拽事件
             appElement.addEventListener('dragstart', (e) => {
                 e.dataTransfer.effectAllowed = 'move';
-                e.dataTransfer.setData('text/plain', realIndex);
+                e.dataTransfer.setData('text/plain', index);
             });
             
             appElement.addEventListener('dragover', (e) => {
@@ -87,16 +101,39 @@ export class ShortcutManager {
                 e.preventDefault();
                 appElement.classList.remove('drag-over');
                 const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
-                this.reorderApps(fromIndex, realIndex);
+                this.reorderApps(fromIndex, index);
             });
             
-            // 编辑和删除事件
+            // 编辑事件 - 在表单中填充数据
             appElement.querySelector('.app-edit-btn').addEventListener('click', () => {
-                this.editAppIcon(realIndex);
+                const app = this.apps[index];
+                document.getElementById('app-name').value = app.name;
+                document.getElementById('app-url').value = app.url;
+                
+                if (app.icon && app.icon.startsWith('data:')) {
+                    document.querySelector('input[name="icon-type"][value="upload"]').checked = true;
+                    this.uploadedImageData = app.icon;
+                    const imagePreview = document.getElementById('image-preview');
+                    if (imagePreview) {
+                        imagePreview.innerHTML = `<img src="${app.icon}" alt="preview" style="max-width: 100%; max-height: 100px; margin-top: 8px;">`;
+                    }
+                    this.textIconOptions.classList.add('hidden');
+                    this.uploadIconOptions.classList.remove('hidden');
+                } else {
+                    document.querySelector('input[name="icon-type"][value="text"]').checked = true;
+                    document.getElementById('app-color').value = app.color || '#0084ff';
+                    document.getElementById('app-text').value = app.text || '';
+                    this.textIconOptions.classList.remove('hidden');
+                    this.uploadIconOptions.classList.add('hidden');
+                }
+                
+                // 滚动到表单
+                document.getElementById('add-panel').scrollIntoView({ behavior: 'smooth' });
             });
             
+            // 删除事件
             appElement.querySelector('.app-delete-btn').addEventListener('click', () => {
-                this.deleteApp(realIndex);
+                this.deleteApp(index);
             });
             
             // 点击打开
@@ -106,6 +143,8 @@ export class ShortcutManager {
             
             this.appsContainer.appendChild(appElement);
         });
+        
+        console.log('[Shortcuts] Rendered', this.apps.length, 'apps');
     }
 
     // 获取应用图标 HTML
@@ -119,128 +158,105 @@ export class ShortcutManager {
         }
     }
 
-    // 设置添加应用按钮
-    setupAddAppButton() {
-        this.addAppBtn.addEventListener('click', () => {
-            this.editingAppKey = null;
-            this.showAppModal();
-        });
-    }
-
-    // 显示应用模态框
-    showAppModal() {
-        this.appNameInput.value = '';
-        this.appUrlInput.value = '';
-        this.appIconInput.value = '';
-        this.appIconSelect.value = 'text';
-        this.appIconColorInput.value = '#42b883';
-        this.appIconTextInput.value = '';
-        this.updateIconPreview();
-        this.appModal.classList.add('show');
-        
-        if (!this.appModal.dataset.setupDone) {
-            this.setupAppForm();
-            this.appModal.dataset.setupDone = 'true';
+    // 设置添加应用表单
+    setupAddAppForm() {
+        if (!this.shortcutForm) {
+            console.warn('[Shortcuts] Shortcut form not found');
+            return;
         }
-    }
-
-    // 设置应用表单
-    setupAppForm() {
-        const saveBtn = document.getElementById('app-save-btn');
-        const cancelBtn = document.getElementById('app-cancel-btn');
         
-        saveBtn.addEventListener('click', () => this.saveApp());
-        cancelBtn.addEventListener('click', () => this.closeAppModal());
-        
-        this.appIconSelect.addEventListener('change', (e) => {
-            if (e.target.value === 'upload') {
-                this.appIconInput.click();
-            } else {
-                this.updateIconPreview();
-            }
+        // 表单提交
+        this.shortcutForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.saveApp();
         });
         
-        this.appIconInput.addEventListener('change', (e) => {
-            this.handleAppIconUpload(e);
+        // 图标类型切换
+        this.iconTypeRadios.forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                if (e.target.value === 'text') {
+                    this.textIconOptions.classList.remove('hidden');
+                    this.uploadIconOptions.classList.add('hidden');
+                } else {
+                    this.textIconOptions.classList.add('hidden');
+                    this.uploadIconOptions.classList.remove('hidden');
+                }
+            });
         });
         
-        this.appIconColorInput.addEventListener('change', () => {
-            this.updateIconPreview();
-        });
-        
-        this.appIconTextInput.addEventListener('input', () => {
-            this.updateIconPreview();
-        });
-    }
-
-    // 更新图标预览
-    updateIconPreview() {
-        const iconType = this.appIconSelect.value;
-        
-        if (iconType === 'text') {
-            const color = this.appIconColorInput.value;
-            const text = (this.appIconTextInput.value || this.appNameInput.value.charAt(0) || 'A').toUpperCase();
-            this.appIconPreview.innerHTML = `<span class="text-icon" style="background-color: ${color};">${text}</span>`;
-        } else if (iconType === 'upload' && this.appIconInput.value) {
-            // 上传中...
+        // 解析 URL 按钮
+        if (this.parseUrlBtn) {
+            this.parseUrlBtn.addEventListener('click', () => {
+                this.parseUrl();
+            });
         }
+        
+        // 图片上传
+        if (this.appImageInput) {
+            this.appImageInput.addEventListener('change', (e) => {
+                this.handleImageUpload(e);
+            });
+        }
+        
+        console.log('[Shortcuts] Add app form setup completed');
     }
 
-    // 处理应用图标上传
-    async handleAppIconUpload(e) {
+    // 处理图像上传
+    handleImageUpload(e) {
         const file = e.target.files[0];
         if (!file) return;
         
         const reader = new FileReader();
-        reader.onload = async (event) => {
+        reader.onload = (event) => {
             try {
                 const dataUrl = event.target.result;
-                this.appIconSelect.value = 'uploaded';
-                this.appIconSelect.dataset.uploadedDataUrl = dataUrl;
+                const imagePreview = document.getElementById('image-preview');
+                if (imagePreview) {
+                    imagePreview.innerHTML = `<img src="${dataUrl}" alt="preview" style="max-width: 100%; max-height: 100px; margin-top: 8px;">`;
+                }
                 
-                const img = new Image();
-                img.onload = () => {
-                    this.appIconPreview.innerHTML = `<img src="${dataUrl}" alt="icon">`;
-                };
-                img.onerror = () => {
-                    alert('Failed to load image');
-                };
-                img.src = dataUrl;
-                
-                console.log('[Shortcuts] Icon uploaded successfully');
+                // 保存base64数据以便后续使用
+                this.uploadedImageData = dataUrl;
+                console.log('[Shortcuts] Image uploaded successfully');
             } catch (error) {
-                console.error('[Shortcuts] Failed to upload icon:', error);
+                console.error('[Shortcuts] Failed to upload image:', error);
             }
         };
         reader.readAsDataURL(file);
     }
 
-    // 编辑应用图标
-    editAppIcon(index) {
-        this.editingAppKey = index;
-        const app = this.apps[index];
+    // 解析 URL
+    parseUrl() {
+        const urlInput = document.getElementById('app-url');
+        const nameInput = document.getElementById('app-name');
         
-        this.appNameInput.value = app.name;
-        this.appUrlInput.value = app.url;
-        
-        if (app.icon && app.icon.startsWith('data:')) {
-            this.appIconSelect.value = 'uploaded';
-            this.appIconSelect.dataset.uploadedDataUrl = app.icon;
-            this.appIconPreview.innerHTML = `<img src="${app.icon}" alt="icon">`;
-        } else {
-            this.appIconSelect.value = 'text';
-            this.appIconColorInput.value = app.color || '#42b883';
-            this.appIconTextInput.value = app.text || '';
-            this.updateIconPreview();
+        if (!urlInput.value) {
+            alert('Please enter URL first');
+            return;
         }
         
-        this.appModal.classList.add('show');
+        try {
+            const url = new URL(urlInput.value.startsWith('http') ? urlInput.value : `https://${urlInput.value}`);
+            const hostname = url.hostname.replace('www.', '');
+            const name = hostname.split('.')[0];
+            nameInput.value = name.charAt(0).toUpperCase() + name.slice(1);
+            console.log('[Shortcuts] Parsed URL:', name);
+        } catch (error) {
+            alert('Invalid URL format');
+            console.error('[Shortcuts] Failed to parse URL:', error);
+        }
     }
 
     // 保存应用
     async saveApp() {
-        const name = this.appNameInput.value.trim();
-        const url = this.appUrlInput.value.trim();
+        const nameInput = document.getElementById('app-name');
+        const urlInput = document.getElementById('app-url');
+        const textInput = document.getElementById('app-text');
+        const colorInput = document.getElementById('app-color');
+        const iconTypeRadios = document.querySelectorAll('input[name="icon-type"]');
+        
+        const name = nameInput.value.trim();
+        const url = urlInput.value.trim();
         
         if (!name || !url) {
             alert('Please enter app name and URL');
@@ -263,18 +279,20 @@ export class ShortcutManager {
         };
         
         // 处理图标
-        if (this.appIconSelect.value === 'text') {
-            app.color = this.appIconColorInput.value;
-            app.text = (this.appIconTextInput.value || name.charAt(0)).toUpperCase();
-        } else if (this.appIconSelect.value === 'uploaded' && this.appIconSelect.dataset.uploadedDataUrl) {
-            app.icon = this.appIconSelect.dataset.uploadedDataUrl;
+        const iconType = Array.from(iconTypeRadios).find(r => r.checked).value;
+        if (iconType === 'text') {
+            app.color = colorInput.value;
+            app.text = (textInput.value || name.charAt(0)).toUpperCase();
+        } else if (iconType === 'upload' && this.uploadedImageData) {
+            app.icon = this.uploadedImageData;
         }
         
         // 添加或编辑
-        if (this.editingAppKey === null) {
+        const existingIndex = this.apps.findIndex(a => a.name === app.name);
+        if (existingIndex === -1) {
             this.apps.push(app);
         } else {
-            this.apps[this.editingAppKey] = app;
+            this.apps[existingIndex] = app;
         }
         
         // 保存到存储
@@ -286,8 +304,13 @@ export class ShortcutManager {
         
         console.log('[Shortcuts] Saved app:', name);
         
+        // 清空表单
+        this.shortcutForm.reset();
+        this.uploadedImageData = null;
+        const imagePreview = document.getElementById('image-preview');
+        if (imagePreview) imagePreview.innerHTML = '';
+        
         this.renderApps();
-        this.closeAppModal();
     }
 
     // 删除应用
@@ -323,12 +346,6 @@ export class ShortcutManager {
         
         console.log('[Shortcuts] Reordered apps');
         this.renderApps();
-    }
-
-    // 关闭应用模态框
-    closeAppModal() {
-        this.appModal.classList.remove('show');
-        this.editingAppKey = null;
     }
 }
 

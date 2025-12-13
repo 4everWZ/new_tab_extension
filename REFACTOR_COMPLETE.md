@@ -57,7 +57,7 @@ new_tab_extension/
 ├── MODULARIZATION.md                (重构文档)
 │
 └── 📦 已弃用文件
-    └── script.js / style.css.bak    (原始文件备份)
+    └── script.js.bak / style.css.bak    (原始文件备份)
 ```
 
 ---
