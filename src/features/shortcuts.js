@@ -5,6 +5,65 @@ function t(key) {
     return typeof window.t === 'function' ? window.t(key) : key;
 }
 
+const _iconCacheInFlight = new Set();
+
+function applyTextFallback(iconEl, app) {
+    iconEl.style.backgroundImage = 'none';
+    iconEl.style.backgroundColor = app.color || '#ccc';
+    iconEl.innerText = app.text || app.name?.[0] || '';
+}
+
+function applyImageIcon(ctx, iconEl, app, { defaultBg = '#f0f0f0' } = {}) {
+    const url = app.img;
+    if (!url) {
+        applyTextFallback(iconEl, app);
+        return;
+    }
+
+    iconEl.innerText = '';
+    iconEl.style.backgroundImage = `url(${url})`;
+    iconEl.style.backgroundSize = 'cover';
+    iconEl.style.backgroundPosition = 'center';
+
+    if (url.startsWith('data:')) {
+        iconEl.style.backgroundColor = defaultBg;
+        return;
+    }
+
+    // Render should not require CORS; use a simple probe image for onerror fallback.
+    iconEl.style.backgroundColor = defaultBg;
+    const probe = new Image();
+    let finished = false;
+    probe.onload = async () => {
+        if (finished) return;
+        finished = true;
+
+        // Cache to data URL when network is good (best-effort).
+        if (_iconCacheInFlight.has(url)) return;
+        _iconCacheInFlight.add(url);
+        try {
+            const cached = await convertImageToDataUrl(url);
+            if (cached && cached.startsWith('data:') && app.img === url) {
+                app.img = cached;
+                app.iconType = app.iconType || 'icon';
+                app.isTransparent = await checkImageTransparency(cached);
+                ctx.actions.saveApps();
+
+                iconEl.style.backgroundImage = `url(${cached})`;
+                iconEl.style.backgroundColor = defaultBg;
+            }
+        } finally {
+            _iconCacheInFlight.delete(url);
+        }
+    };
+    probe.onerror = () => {
+        if (finished) return;
+        finished = true;
+        applyTextFallback(iconEl, app);
+    };
+    probe.src = url;
+}
+
 export function setupShortcutForm(ctx) {
     const { shortcutForm, iconTypeRadios } = ctx.dom;
 
@@ -300,26 +359,9 @@ export function renderGrid(ctx) {
         if (ctx.state.settings.iconAnimation) icon.classList.add('with-animation');
 
         if (app.iconType === 'icon' && app.img) {
-            icon.style.backgroundImage = `url(${app.img})`;
-            if (!app.isTransparent) icon.style.backgroundColor = '#f0f0f0';
-            icon.style.backgroundSize = 'cover';
-            icon.style.backgroundPosition = 'center';
-
-            if (!app.img.startsWith('data:')) {
-                // legacy behavior kept
-                const onerror = () => {
-                    icon.style.backgroundImage = 'none';
-                    icon.style.backgroundColor = app.color || '#ccc';
-                    icon.innerText = app.text || app.name[0];
-                    item.removeEventListener('error', onerror);
-                };
-                item.addEventListener('error', onerror);
-            }
+            applyImageIcon(ctx, icon, app, { defaultBg: '#f0f0f0' });
         } else if (app.iconType === 'upload' && app.img) {
-            icon.style.backgroundImage = `url(${app.img})`;
-            if (!app.isTransparent) icon.style.backgroundColor = app.color || '#ccc';
-            icon.style.backgroundSize = 'cover';
-            icon.style.backgroundPosition = 'center';
+            applyImageIcon(ctx, icon, app, { defaultBg: app.color || '#ccc' });
         } else if (app.iconType === 'color') {
             icon.style.backgroundColor = app.color || '#ccc';
             icon.innerText = app.text || app.name[0];

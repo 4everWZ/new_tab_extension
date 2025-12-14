@@ -7,14 +7,26 @@
     "newtab": "newtab.html"
   },
   "permissions": [
-    "storage"
+    "storage",
+    "declarativeNetRequest"
   ],
   "host_permissions": [
     "https://www.bing.com/*",
     "https://www.google.com/*",
+    "https://*.gstatic.com/*",
+    "https://icons.duckduckgo.com/*",
     "https://images.unsplash.com/*"
   ],
   "icons": {
     "128": "icon.png"
+  },
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "cors_favicons",
+        "enabled": true,
+        "path": "rules/cors-favicons.json"
+      }
+    ]
   }
 }

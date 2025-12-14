@@ -49,93 +49,160 @@ export function compressImage(dataUrl, maxSize = 8 * 1024 * 1024) {
     });
 }
 
+function blobToDataUrl(blob) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error('Failed to read blob as data URL'));
+        reader.readAsDataURL(blob);
+    });
+}
+
+function isCacheableRemoteImageUrl(imageUrl) {
+    try {
+        const url = new URL(imageUrl);
+        if (url.protocol !== 'https:') return false;
+        const host = url.hostname;
+        return host === 'icons.duckduckgo.com' || host.endsWith('.gstatic.com') || host.endsWith('.google.com') || host === 'www.google.com';
+    } catch {
+        return false;
+    }
+}
+
+// Fetch an image and return it as a data URL.
+// For cross-origin sources, this relies on the MV3 DNR ruleset to add ACAO headers.
+export async function fetchImageToDataUrl(imageUrl, { timeoutMs = 8000, maxBytes = 2 * 1024 * 1024 } = {}) {
+    if (!imageUrl || typeof imageUrl !== 'string') return null;
+    if (imageUrl.startsWith('data:')) return imageUrl;
+
+    // Avoid noisy failures and extra permissions: only cache from known favicon providers.
+    if (!isCacheableRemoteImageUrl(imageUrl)) return null;
+
+    // Fetch (original design). With DNR rules that add ACAO, this should not trigger CORS errors.
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        const resp = await fetch(imageUrl, {
+            signal: controller.signal,
+            cache: 'force-cache',
+            redirect: 'follow',
+            credentials: 'omit',
+        });
+        if (resp?.ok) {
+            const blob = await resp.blob();
+            if (maxBytes && blob.size > maxBytes) return null;
+            const dataUrl = await blobToDataUrl(blob);
+            return typeof dataUrl === 'string' && dataUrl.startsWith('data:') ? dataUrl : null;
+        }
+    } catch {
+        return null;
+    } finally {
+        clearTimeout(timeout);
+    }
+
+    return null;
+}
+
 // Detect whether an image contains transparent pixels.
 export function checkImageTransparency(imageUrl) {
-    try {
-        const img = new Image();
-        img.crossOrigin = 'Anonymous';
+    return (async () => {
+        try {
+            if (!imageUrl?.startsWith('data:') && !isCacheableRemoteImageUrl(imageUrl)) return false;
+            const safeUrl = imageUrl?.startsWith('data:')
+                ? imageUrl
+                : await fetchImageToDataUrl(imageUrl, { timeoutMs: 8000, maxBytes: 2 * 1024 * 1024 });
 
-        return new Promise((resolve) => {
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                canvas.width = img.width;
-                canvas.height = img.height;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0);
+            if (!safeUrl || !safeUrl.startsWith('data:')) return false;
 
-                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                const data = imageData.data;
+            const img = new Image();
+            return await new Promise((resolve) => {
+                img.onload = () => {
+                    try {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0);
 
-                let hasTransparency = false;
-                for (let i = 3; i < data.length; i += 4) {
-                    if (data[i] < 200) {
-                        hasTransparency = true;
-                        break;
+                        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                        const data = imageData.data;
+
+                        let hasTransparency = false;
+                        for (let i = 3; i < data.length; i += 4) {
+                            if (data[i] < 200) {
+                                hasTransparency = true;
+                                break;
+                            }
+                        }
+
+                        resolve(hasTransparency);
+                    } catch {
+                        resolve(false);
                     }
-                }
-
-                resolve(hasTransparency);
-            };
-
-            img.onerror = () => resolve(false);
-            img.src = imageUrl;
-        });
-    } catch {
-        return Promise.resolve(false);
-    }
+                };
+                img.onerror = () => resolve(false);
+                img.src = safeUrl;
+            });
+        } catch {
+            return false;
+        }
+    })();
 }
 
 // Convert an image URL to a PNG dataURL (best-effort). Includes timeouts.
 export function convertImageToDataUrl(imageUrl) {
-    return new Promise((resolve) => {
-        const img = new Image();
-        img.crossOrigin = 'Anonymous';
+    return (async () => {
+        if (!imageUrl || typeof imageUrl !== 'string') return imageUrl;
+        if (imageUrl.startsWith('data:')) return imageUrl;
 
-        img.onload = () => {
-            try {
-                const canvas = document.createElement('canvas');
-                const width = img.naturalWidth || img.width;
-                const height = img.naturalHeight || img.height;
-                if (!width || !height) {
-                    console.warn('[convertImageToDataUrl] Invalid image dimensions:', { width, height });
-                    resolve(imageUrl);
-                    return;
+        if (!isCacheableRemoteImageUrl(imageUrl)) return imageUrl;
+
+        // Prefer fetch-based conversion.
+        const fetched = await fetchImageToDataUrl(imageUrl, { timeoutMs: 8000, maxBytes: 2 * 1024 * 1024 });
+        if (fetched) return fetched;
+
+        // Fallback: try HTMLImageElement+canvas (may be blocked/tainted without CORS).
+        return await new Promise((resolve) => {
+            const img = new Image();
+            let done = false;
+            const finish = (value) => {
+                if (done) return;
+                done = true;
+                resolve(value);
+            };
+
+            img.onload = () => {
+                try {
+                    const canvas = document.createElement('canvas');
+                    const width = img.naturalWidth || img.width;
+                    const height = img.naturalHeight || img.height;
+                    if (!width || !height) return finish(imageUrl);
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    const dataUrl = canvas.toDataURL('image/png');
+                    finish(dataUrl);
+                } catch {
+                    finish(imageUrl);
                 }
-                canvas.width = width;
-                canvas.height = height;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, width, height);
-                const dataUrl = canvas.toDataURL('image/png');
-                console.log('[convertImageToDataUrl] ✓ Converted to data URL, size:', (dataUrl.length / 1024).toFixed(2) + 'KB');
-                resolve(dataUrl);
-            } catch (e) {
-                console.error('[convertImageToDataUrl] Conversion error:', e);
-                resolve(imageUrl);
-            }
-        };
+            };
 
-        img.onerror = () => {
-            console.warn('[convertImageToDataUrl] Failed to load image:', imageUrl);
-            resolve(imageUrl);
-        };
+            img.onerror = () => finish(imageUrl);
+            img.onabort = () => finish(imageUrl);
 
-        img.onabort = () => {
-            console.warn('[convertImageToDataUrl] Image loading aborted:', imageUrl);
-            resolve(imageUrl);
-        };
+            const timeout = setTimeout(() => {
+                img.src = '';
+                finish(imageUrl);
+            }, 5000);
 
-        const timeout = setTimeout(() => {
-            console.warn('[convertImageToDataUrl] Image loading timeout:', imageUrl);
-            img.src = '';
-            resolve(imageUrl);
-        }, 5000);
+            const originalOnload = img.onload;
+            img.onload = function () {
+                clearTimeout(timeout);
+                originalOnload.call(this);
+            };
 
-        const originalOnload = img.onload;
-        img.onload = function () {
-            clearTimeout(timeout);
-            originalOnload.call(this);
-        };
-
-        img.src = imageUrl;
-    });
+            img.src = imageUrl;
+        });
+    })();
 }

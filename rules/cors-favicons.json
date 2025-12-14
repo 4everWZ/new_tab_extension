@@ -1,0 +1,48 @@
+[
+  {
+    "id": 1,
+    "priority": 1,
+    "action": {
+      "type": "modifyHeaders",
+      "responseHeaders": [
+        {
+          "header": "access-control-allow-origin",
+          "operation": "set",
+          "value": "*"
+        },
+        {
+          "header": "access-control-allow-methods",
+          "operation": "set",
+          "value": "GET"
+        }
+      ]
+    },
+    "condition": {
+      "resourceTypes": ["xmlhttprequest"],
+      "urlFilter": "||icons.duckduckgo.com/ip3/"
+    }
+  },
+  {
+    "id": 2,
+    "priority": 1,
+    "action": {
+      "type": "modifyHeaders",
+      "responseHeaders": [
+        {
+          "header": "access-control-allow-origin",
+          "operation": "set",
+          "value": "*"
+        },
+        {
+          "header": "access-control-allow-methods",
+          "operation": "set",
+          "value": "GET"
+        }
+      ]
+    },
+    "condition": {
+      "resourceTypes": ["xmlhttprequest"],
+      "urlFilter": "||gstatic.com/faviconV2"
+    }
+  }
+]
