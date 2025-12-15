@@ -304,7 +304,7 @@ body::after {
     justify-content: center;
     overflow: hidden;
     /* Fixed height for stable layout with padding for icon hover scale and name text */
-    height: calc((var(--icon-size, 90px) + 50px + 40px) * var(--grid-rows, 2));
+    height: calc((var(--icon-size, 90px) + 50px + 32px) * var(--grid-rows, 2));
     padding: 20px 0;
 }
 
