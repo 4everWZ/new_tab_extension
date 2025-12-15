@@ -72,11 +72,14 @@ body::after {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     width: 100%;
     max-width: 1200px;
     padding: 60px 40px 40px;
     gap: 30px;
+    /* Use fixed layout based on rows */
+    --row-height: calc(var(--icon-size, 90px) + 50px + 20px);
+    min-height: calc(var(--row-height) * var(--grid-rows, 2) + 200px);
 }
 
 /* 搜索类型选项卡 */
@@ -299,18 +302,55 @@ body::after {
     width: 100%;
     display: flex;
     justify-content: center;
-    flex: 1;
+    overflow: hidden;
+    /* Fixed height for stable layout with padding for icon hover scale */
+    height: calc((var(--icon-size, 90px) + 50px + 20px) * var(--grid-rows, 2));
+    padding: 20px 0;
+}
+
+.grid-wrapper::before,
+.grid-wrapper::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 80px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.grid-wrapper::before {
+    left: 0;
+    background: linear-gradient(to right, rgba(66, 133, 244, 0.2), transparent);
+}
+
+.grid-wrapper::after {
+    right: 0;
+    background: linear-gradient(to left, rgba(66, 133, 244, 0.2), transparent);
+}
+
+.grid-wrapper.edge-highlight-left::before {
+    opacity: 1;
+}
+
+.grid-wrapper.edge-highlight-right::after {
+    opacity: 1;
 }
 
 .grid-container {
     display: grid;
-    grid-template-columns: repeat(var(--grid-cols, 5), auto);
+    grid-template-columns: repeat(var(--grid-cols, 5), var(--icon-size, 90px));
     gap: 50px;
-    justify-items: center;
-    align-items: center;
-    width: fit-content;
+    justify-items: start;
+    align-items: start;
+    width: 100%;
+    max-width: calc(var(--grid-cols, 5) * (var(--icon-size, 90px) + 50px));
     margin: 0 auto;
-    transition: none;
+    /* Slide animation for page transitions */
+    transition: transform 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
+    will-change: transform;
 }
 
 /* 单个图标卡片 */
@@ -337,6 +377,24 @@ body::after {
 
 .app-item.edit-mode:active {
     cursor: grabbing;
+}
+
+.app-item.empty-placeholder {
+    width: var(--icon-size, 90px);
+    height: calc(var(--icon-size, 90px) + 50px + 20px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px dashed rgba(255, 255, 255, 0.2);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.05);
+    transition: all 0.2s ease;
+}
+
+.app-item.empty-placeholder.drag-over {
+    border-color: rgba(66, 133, 244, 0.6);
+    background: rgba(66, 133, 244, 0.1);
+    transform: scale(1.05);
 }
 
 .app-item.dragging {
@@ -502,6 +560,8 @@ body::after {
     justify-content: center;
     gap: 12px;
     margin-top: 30px;
+    min-height: 40px;
+    align-items: center;
 }
 
 .dot {
@@ -520,6 +580,16 @@ body::after {
 
 .dot:hover {
     background: rgba(255, 255, 255, 0.8);
+}
+
+@keyframes dropPop {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.08); }
+    100% { transform: scale(1); }
+}
+
+.app-item.drop-animate .app-icon {
+    animation: dropPop 0.42s ease-out;
 }
 
 /* 壁纸刷新按钮 */

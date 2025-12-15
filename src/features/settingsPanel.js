@@ -221,6 +221,10 @@ export function setupSettingsPanel(ctx) {
 
             document.getElementById('custom-cols-item')?.classList.add('hidden');
             settings.gridCols = parseInt(colsRaw);
+            // Parse rows from button label text like "2x4"; default to 2 if parse fails.
+            const label = (e.target.textContent || '').trim();
+            const rowPart = parseInt(label.split('x')[0]);
+            settings.gridRows = Number.isFinite(rowPart) ? rowPart : (settings.gridRows || 2);
             document.querySelectorAll('.grid-preset').forEach((b) => b.classList.remove('active'));
             e.target.classList.add('active');
 

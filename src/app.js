@@ -31,8 +31,9 @@ async function loadData(ctx) {
     if (Array.isArray(result.apps) && result.apps.length > 0) {
         ctx.state.allApps = result.apps;
 
-        // Migration: add iconType for old entries
+        // Migration: add iconType for old entries and filter out null values
         let needSave = false;
+        ctx.state.allApps = ctx.state.allApps.filter(app => app !== null && app !== undefined);
         ctx.state.allApps.forEach((app) => {
             if (!app.iconType) {
                 app.iconType = app.img ? 'upload' : 'color';

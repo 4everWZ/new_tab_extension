@@ -14,6 +14,7 @@ export const DEFAULT_SETTINGS = {
     maskOpacity: 45,
     wallpaperBlur: 0,
     gridCols: 6,
+    gridRows: 2,
     showIconLabel: false,
     iconShadow: true,
     iconAnimation: true,

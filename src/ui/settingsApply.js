@@ -11,7 +11,20 @@ export function applySettingsExceptMask(ctx) {
     const { settings } = ctx.state;
     const { body, searchBox } = ctx.dom;
 
+    // Update pageSize based on grid layout (gridCols * 2 rows)
+    const rows = settings.gridRows || 2;
+    const newPageSize = settings.gridCols * rows;
+    if (ctx.state.pageSize !== newPageSize) {
+        ctx.state.pageSize = newPageSize;
+        // Reset currentPage if it exceeds new total pages
+        const totalPages = Math.ceil(ctx.state.allApps.length / newPageSize);
+        if (ctx.state.currentPage >= totalPages) {
+            ctx.state.currentPage = Math.max(0, totalPages - 1);
+        }
+    }
+
     body.style.setProperty('--grid-cols', settings.gridCols);
+    body.style.setProperty('--grid-rows', rows);
     const gridElement = document.getElementById('grid');
     if (gridElement) {
         gridElement.style.gridTemplateColumns = `repeat(${settings.gridCols}, auto)`;
