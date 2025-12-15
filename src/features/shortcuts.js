@@ -476,32 +476,32 @@ export function renderGrid(ctx) {
     const { pageSize, currentPage, allApps, isEditMode } = ctx.state;
 
     grid.innerHTML = '';
+    
+    // Add global dragover listener for edge detection in edit mode
+    if (isEditMode && !ctx._gridDragOverAttached) {
+        const gridWrapper = document.querySelector('.grid-wrapper');
+        if (gridWrapper) {
+            const globalDragOver = (e) => {
+                if (ctx.state.isEditMode && ctx.state.draggedIndex != null) {
+                    e.preventDefault();
+                    maybeAutoPageOnEdge(ctx, e.clientX);
+                }
+            };
+            gridWrapper.addEventListener('dragover', globalDragOver);
+            ctx._gridDragOverAttached = true;
+            ctx._globalDragOver = globalDragOver;
+        }
+    }
 
     const start = currentPage * pageSize;
     const end = start + pageSize;
     const pageApps = allApps.slice(start, end);
 
-    // In edit mode, fill empty slots with placeholders
-    const slotsToRender = isEditMode ? pageSize : pageApps.length;
-
-    for (let index = 0; index < slotsToRender; index++) {
-        const app = pageApps[index];
+    // Only render actual apps, no empty placeholders
+    pageApps.forEach((app, index) => {
+        if (!app) return;
+        
         const realIndex = start + index;
-        
-        // Empty placeholder in edit mode
-        if (!app && isEditMode) {
-            const placeholder = document.createElement('div');
-            placeholder.className = 'app-item edit-mode empty-placeholder';
-            placeholder.dataset.index = index;
-            placeholder.addEventListener('dragover', (e) => handleDragOver(ctx, e));
-            placeholder.addEventListener('drop', (e) => handleDropOnEmpty(ctx, e, realIndex));
-            placeholder.addEventListener('dragleave', (e) => handleDragLeave(ctx, e));
-            grid.appendChild(placeholder);
-            continue;
-        }
-        
-        if (!app) continue;
-
         const item = document.createElement('a');
         item.href = isEditMode ? 'javascript:void(0)' : app.url;
         item.className = 'app-item';
@@ -586,7 +586,7 @@ export function renderGrid(ctx) {
         item.appendChild(iconContainer);
         item.appendChild(name);
         grid.appendChild(item);
-    }
+    });
 }
 
 export function enterEditMode(ctx, index) {
@@ -1037,51 +1037,6 @@ function handleDrop(ctx, e) {
             // Animate drop target
             const newLocalIndex = adjustedTarget % ctx.state.pageSize;
             setTimeout(() => animateDropAtIndex(ctx, newLocalIndex), 0);
-        }
-    }
-
-    return false;
-}
-
-function handleDropOnEmpty(ctx, e, targetGlobalIndex) {
-    e.stopPropagation();
-    e.preventDefault();
-
-    const el = e.currentTarget;
-    el.classList.remove('drag-over');
-
-    if (ctx.state.draggedIndex != null) {
-        // Move item to empty position
-        const draggedItem = ctx.state.allApps[ctx.state.draggedIndex];
-        
-        // Adjust target index if dragging from before the target
-        let adjustedTarget = targetGlobalIndex;
-        if (ctx.state.draggedIndex < targetGlobalIndex) {
-            adjustedTarget--;
-        }
-        
-        ctx.state.allApps.splice(ctx.state.draggedIndex, 1);
-        
-        // If target is beyond array, fill gaps
-        if (adjustedTarget >= ctx.state.allApps.length) {
-            while (ctx.state.allApps.length < adjustedTarget) {
-                ctx.state.allApps.push(null);
-            }
-            ctx.state.allApps.push(draggedItem);
-        } else {
-            ctx.state.allApps.splice(adjustedTarget, 0, draggedItem);
-        }
-
-        ctx.actions.saveApps();
-        
-        // Calculate target page and navigate
-        const targetPage = Math.floor(adjustedTarget / ctx.state.pageSize);
-        if (targetPage !== ctx.state.currentPage) {
-            const direction = targetPage > ctx.state.currentPage ? 'next' : 'prev';
-            setPage(ctx, targetPage, { direction, animate: true });
-        } else {
-            renderGrid(ctx);
-            renderPagination(ctx);
         }
     }
 

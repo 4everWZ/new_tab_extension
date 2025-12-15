@@ -303,8 +303,8 @@ body::after {
     display: flex;
     justify-content: center;
     overflow: hidden;
-    /* Fixed height for stable layout with padding for icon hover scale */
-    height: calc((var(--icon-size, 90px) + 50px + 20px) * var(--grid-rows, 2));
+    /* Fixed height for stable layout with padding for icon hover scale and name text */
+    height: calc((var(--icon-size, 90px) + 50px + 40px) * var(--grid-rows, 2));
     padding: 20px 0;
 }
 
@@ -377,24 +377,6 @@ body::after {
 
 .app-item.edit-mode:active {
     cursor: grabbing;
-}
-
-.app-item.empty-placeholder {
-    width: var(--icon-size, 90px);
-    height: calc(var(--icon-size, 90px) + 50px + 20px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 2px dashed rgba(255, 255, 255, 0.2);
-    border-radius: 16px;
-    background: rgba(255, 255, 255, 0.05);
-    transition: all 0.2s ease;
-}
-
-.app-item.empty-placeholder.drag-over {
-    border-color: rgba(66, 133, 244, 0.6);
-    background: rgba(66, 133, 244, 0.1);
-    transform: scale(1.05);
 }
 
 .app-item.dragging {
