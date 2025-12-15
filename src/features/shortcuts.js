@@ -226,18 +226,21 @@ export function setupShortcutForm(ctx) {
 
         const gridWrapper = document.querySelector('.grid-wrapper');
         gridWrapper?.addEventListener('wheel', ctx._handlers.onGridWheel, { passive: false });
-    }
+    
 
-    // URL parse
+    // URL parse - add listeners only once
     const urlInput = document.getElementById('app-url');
     const parseUrlBtn = document.getElementById('parse-url-btn');
 
-    urlInput?.addEventListener('blur', () => {
-        const url = urlInput.value.trim();
-        if (url && parseUrlBtn) parseUrlBtn.click();
-    });
+    if (urlInput && !ctx._handlers._urlBlurAttached) {
+        urlInput.addEventListener('blur', () => {
+            const url = urlInput.value.trim();
+            if (url && parseUrlBtn) parseUrlBtn.click();
+        });
+        ctx._handlers._urlBlurAttached = true;
+    }
 
-    if (parseUrlBtn) {
+    if (parseUrlBtn && !ctx._handlers._parseUrlAttached) {
         parseUrlBtn.addEventListener('click', (e) => {
             e.preventDefault();
             const url = urlInput?.value.trim();
@@ -321,10 +324,12 @@ export function setupShortcutForm(ctx) {
                 alert('请输入有效的URL (例: https://example.com)');
             }
         });
+        ctx._handlers._parseUrlAttached = true;
     }
 
-    // Switch icon type
-    iconTypeRadios?.forEach((radio) => {
+    // Switch icon type - add listeners only once
+    if (iconTypeRadios && !ctx._handlers._iconTypeRadiosAttached) {
+        iconTypeRadios.forEach((radio) => {
         radio.addEventListener('change', (e) => {
             const textOptions = document.getElementById('text-icon-options');
             const uploadOptions = document.getElementById('upload-icon-options');
@@ -337,8 +342,10 @@ export function setupShortcutForm(ctx) {
             }
         });
     });
+        ctx._handlers._iconTypeRadiosAttached = true;
+    }
 
-    // Image upload preview
+    // Image upload preview - add listener only once
     document.getElementById('app-image')?.addEventListener('change', (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -352,21 +359,29 @@ export function setupShortcutForm(ctx) {
         };
         reader.readAsDataURL(file);
     });
+        ctx._handlers._appImageAttached = true;
+    }
 
-    // Submit
-    shortcutForm?.addEventListener('submit', (e) => {
-        e.preventDefault();
-        addNewShortcut(ctx);
-    });
+    // Submit - add listener only once
+    if (shortcutForm && !ctx._handlers._formSubmitAttached) {
+        shortcutForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            addNewShortcut(ctx);
+        });
+        ctx._handlers._formSubmitAttached = true;
+    }
 
-    // Reset
-    shortcutForm?.addEventListener('reset', () => {
-        setTimeout(() => {
-            const preview = document.getElementById('image-preview');
-            preview?.classList.remove('show');
-            if (preview) preview.style.backgroundImage = '';
-        }, 0);
-    });
+    // Reset - add listener only once
+    if (shortcutForm && !ctx._handlers._formResetAttached) {
+        shortcutForm.addEventListener('reset', () => {
+            setTimeout(() => {
+                const preview = document.getElementById('image-preview');
+                preview?.classList.remove('show');
+                if (preview) preview.style.backgroundImage = '';
+            }, 0);
+        });
+        ctx._handlers._formResetAttached = true;
+    }
 }
 
 export function addNewShortcut(ctx) {
@@ -479,7 +494,16 @@ export function renderGrid(ctx) {
     grid.innerHTML = '';
     
     // Add global dragover listener for edge detection in edit mode
-    if (isEditMode && !ctx._gridDragOverAttached) {
+    if (isEditMode) {
+        // Clean up old listener if exists
+        if (ctx._gridDragOverAttached && ctx._globalDragOver) {
+            const gridWrapper = document.querySelector('.grid-wrapper');
+            if (gridWrapper) {
+                gridWrapper.removeEventListener('dragover', ctx._globalDragOver);
+            }
+        }
+        
+        // Add new listener
         const gridWrapper = document.querySelector('.grid-wrapper');
         if (gridWrapper) {
             const globalDragOver = (e) => {
@@ -629,12 +653,25 @@ function exitEditModeOnContextMenu(ctx, e) {
 export function exitEditMode(ctx) {
     ctx.state.isEditMode = false;
     ctx.state.editingItemIndex = null;
+    
+    // Clean up click handlers
     if (ctx._handlers?.exitEditModeOnClick) {
         document.removeEventListener('click', ctx._handlers.exitEditModeOnClick, true);
     }
     if (ctx._handlers?.exitEditModeOnContextMenu) {
         document.removeEventListener('contextmenu', ctx._handlers.exitEditModeOnContextMenu, true);
     }
+    
+    // Clean up dragover listener
+    if (ctx._gridDragOverAttached && ctx._globalDragOver) {
+        const gridWrapper = document.querySelector('.grid-wrapper');
+        if (gridWrapper) {
+            gridWrapper.removeEventListener('dragover', ctx._globalDragOver);
+        }
+        ctx._gridDragOverAttached = false;
+        ctx._globalDragOver = null;
+    }
+    
     renderGrid(ctx);
 }
 
