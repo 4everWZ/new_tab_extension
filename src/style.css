@@ -540,8 +540,8 @@ body::after {
 .pagination {
     display: flex;
     justify-content: center;
-    gap: 12px;
-    margin-top: 30px;
+    gap: 8px;
+    margin-top: 8px;
     min-height: 40px;
     align-items: center;
 }
