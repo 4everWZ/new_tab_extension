@@ -127,7 +127,7 @@ function maybeAutoPageOnEdge(ctx, clientX) {
         setPage(ctx, targetPage, { direction, animate: true });
         edgePageTimer = null;
         // Keep highlight and restart timer if still in edge
-    }, 1000);
+    }, 500);
 }
 
 function applyTextFallback(iconEl, app) {
