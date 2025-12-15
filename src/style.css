@@ -301,11 +301,12 @@ body::after {
     position: relative;
     width: 100%;
     display: flex;
-    justify-content: center;
+    justify-content: flex-start;
     overflow: hidden;
     /* Fixed height for stable layout with padding for icon hover scale and name text */
     height: calc((var(--icon-size, 90px) + 50px + 32px) * var(--grid-rows, 2));
     padding: 20px 0;
+    padding-left: calc((100% - var(--grid-cols, 5) * (var(--icon-size, 90px) + 50px) + 50px) / 2);
 }
 
 .grid-wrapper::before,
@@ -345,9 +346,9 @@ body::after {
     gap: 50px;
     justify-items: start;
     align-items: start;
-    width: 100%;
-    max-width: calc(var(--grid-cols, 5) * (var(--icon-size, 90px) + 50px));
-    margin: 0 auto;
+    justify-content: start;
+    width: fit-content;
+    margin: 0;
     /* Slide animation for page transitions */
     transition: transform 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
     will-change: transform;

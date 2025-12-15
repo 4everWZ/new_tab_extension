@@ -8,7 +8,8 @@ function t(key) {
 const _iconCacheInFlight = new Set();
 
 function getTotalPages(ctx) {
-    const totalPages = Math.ceil((ctx.state.allApps.length || 0) / (ctx.state.pageSize || 1));
+    const validApps = ctx.state.allApps.filter(app => app !== null && app !== undefined);
+    const totalPages = Math.ceil((validApps.length || 0) / (ctx.state.pageSize || 1));
     return Math.max(1, totalPages);
 }
 
@@ -495,11 +496,12 @@ export function renderGrid(ctx) {
 
     const start = currentPage * pageSize;
     const end = start + pageSize;
-    const pageApps = allApps.slice(start, end);
+    // Filter out null values before slicing to show only valid apps
+    const validApps = allApps.filter(app => app !== null && app !== undefined);
+    const pageApps = validApps.slice(start, end);
 
-    // Only render actual apps, no empty placeholders
+    // Only render actual apps
     pageApps.forEach((app, index) => {
-        if (!app) return;
         
         const realIndex = start + index;
         const item = document.createElement('a');
@@ -509,7 +511,8 @@ export function renderGrid(ctx) {
         const openInNewTab = !!ctx.state.settings.openShortcutInNewTab;
         item.target = !isEditMode && openInNewTab ? '_blank' : '_self';
         if (!isEditMode && openInNewTab) item.rel = 'noopener noreferrer';
-        item.dataset.index = realIndex;
+        // Store the GLOBAL index for correct drag-drop
+        item.dataset.globalIndex = realIndex;
 
         item.addEventListener('click', (e) => {
             if (ctx.state.isEditMode) e.preventDefault();
@@ -971,9 +974,8 @@ export function renderPagination(ctx) {
 function handleDragStart(ctx, e) {
     const el = e.currentTarget;
     ctx.state.draggedItem = el;
-    const localIndex = parseInt(el.dataset.index);
-    // Store global index for cross-page dragging
-    ctx.state.draggedIndex = ctx.state.currentPage * ctx.state.pageSize + localIndex;
+    // Get global index directly from dataset
+    ctx.state.draggedIndex = parseInt(el.dataset.globalIndex);
 
     el.classList.add('dragging');
     e.dataTransfer.effectAllowed = 'move';
@@ -1005,19 +1007,55 @@ function handleDrop(ctx, e) {
     el.classList.remove('drag-over');
 
     if (ctx.state.draggedItem !== el && ctx.state.draggedIndex != null) {
-        const localDropIndex = parseInt(el.dataset.index);
-        // Convert local index to global index
-        const globalDropIndex = ctx.state.currentPage * ctx.state.pageSize + localDropIndex;
+        // Get global indices directly from dataset
+        const dropIdx = parseInt(el.dataset.globalIndex);
+        const dragIdx = ctx.state.draggedIndex;
+        
+        if (dropIdx === dragIdx) {
+            return false;
+        }
+        
+        // Filter out null values first
+        const validApps = ctx.state.allApps.filter(app => app !== null && app !== undefined);
+        
+        // Swap using valid array
+        const temp = validApps[dragIdx];
+        validApps[dragIdx] = validApps[dropIdx];
+        validApps[dropIdx] = temp;
+        
+        // Update main array with cleaned data
+        ctx.state.allApps = validApps;
+        ctx.actions.saveApps();
+        
+        // Stay on current page (drop page)
+        renderGrid(ctx);
+        renderPagination(ctx);
+        
+        // Animate the drop target
+        const localDropIndex = dropIdx % ctx.state.pageSize;
+        setTimeout(() => animateDropAtIndex(ctx, localDropIndex), 0);
+    }
 
-        // Move item instead of swap
+    return false;
+}
+
+function handleDropOnEmpty(ctx, e, targetGlobalIndex) {
+    e.stopPropagation();
+    e.preventDefault();
+
+    const el = e.currentTarget;
+    el.classList.remove('drag-over');
+
+    if (ctx.state.draggedIndex != null) {
+        // For empty slots, we want to move (not swap)
         const draggedItem = ctx.state.allApps[ctx.state.draggedIndex];
         
         // Remove from original position
         ctx.state.allApps.splice(ctx.state.draggedIndex, 1);
         
-        // Adjust target if dragging from before
-        let adjustedTarget = globalDropIndex;
-        if (ctx.state.draggedIndex < globalDropIndex) {
+        // Adjust target index if we removed an item before it
+        let adjustedTarget = targetGlobalIndex;
+        if (ctx.state.draggedIndex < targetGlobalIndex) {
             adjustedTarget--;
         }
         
@@ -1026,7 +1064,7 @@ function handleDrop(ctx, e) {
 
         ctx.actions.saveApps();
         
-        // Calculate target page and navigate if different
+        // Navigate to target page
         const targetPage = Math.floor(adjustedTarget / ctx.state.pageSize);
         if (targetPage !== ctx.state.currentPage) {
             const direction = targetPage > ctx.state.currentPage ? 'next' : 'prev';
@@ -1034,9 +1072,6 @@ function handleDrop(ctx, e) {
         } else {
             renderGrid(ctx);
             renderPagination(ctx);
-            // Animate drop target
-            const newLocalIndex = adjustedTarget % ctx.state.pageSize;
-            setTimeout(() => animateDropAtIndex(ctx, newLocalIndex), 0);
         }
     }
 
