@@ -10,12 +10,17 @@
     "storage",
     "declarativeNetRequest"
   ],
+  "background": {
+    "service_worker": "src/background.js"
+  },
   "host_permissions": [
     "https://www.bing.com/*",
     "https://www.google.com/*",
     "https://*.gstatic.com/*",
     "https://icons.duckduckgo.com/*",
-    "https://images.unsplash.com/*"
+    "https://images.unsplash.com/*",
+    "http://*/*",
+    "https://*/*"
   ],
   "icons": {
     "128": "icon.png"

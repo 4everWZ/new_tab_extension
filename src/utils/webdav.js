@@ -6,17 +6,37 @@ export class WebDAVClient {
         this.authHeader = 'Basic ' + btoa(username + ':' + password);
     }
 
+    async _request(method, filename = '', body = null, extraHeaders = {}) {
+        const headers = {
+            'Authorization': this.authHeader,
+            ...extraHeaders
+        };
+
+        if (body) {
+            headers['Content-Type'] = 'application/json';
+        }
+
+        const response = await chrome.runtime.sendMessage({
+            type: 'webdav_proxy',
+            url: this.url + filename,
+            method,
+            headers,
+            body: body ? JSON.stringify(body) : null
+        });
+
+        if (!response.success) {
+            throw new Error(response.error);
+        }
+        return response;
+    }
+
     async checkConnection() {
         try {
-            const response = await fetch(this.url, {
-                method: 'PROPFIND',
-                headers: {
-                    'Authorization': this.authHeader,
-                    'Depth': '0',
-                    'Content-Type': 'application/xml' // Or text/xml
-                }
+            const response = await this._request('PROPFIND', '', null, {
+                'Depth': '0',
+                'Content-Type': 'application/xml'
             });
-            return response.ok;
+            return response.status >= 200 && response.status < 300;
         } catch (e) {
             console.error('[WebDAV] Connection check failed:', e);
             return false;
@@ -24,17 +44,9 @@ export class WebDAVClient {
     }
 
     async upload(filename, data) {
-        const fullUrl = this.url + filename;
         try {
-            const response = await fetch(fullUrl, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': this.authHeader,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(data)
-            });
-            return response.ok;
+            const response = await this._request('PUT', filename, data);
+            return response.status >= 200 && response.status < 300;
         } catch (e) {
             console.error('[WebDAV] Upload failed:', e);
             throw e;
@@ -42,17 +54,11 @@ export class WebDAVClient {
     }
 
     async download(filename) {
-        const fullUrl = this.url + filename;
         try {
-            const response = await fetch(fullUrl, {
-                method: 'GET',
-                headers: {
-                    'Authorization': this.authHeader
-                }
-            });
+            const response = await this._request('GET', filename);
             if (response.status === 404) return null;
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            return await response.json();
+            if (response.status >= 400) throw new Error(`HTTP ${response.status}`);
+            return response.data;
         } catch (e) {
             console.error('[WebDAV] Download failed:', e);
             throw e;
