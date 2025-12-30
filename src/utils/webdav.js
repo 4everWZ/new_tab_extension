@@ -6,14 +6,31 @@ export class WebDAVClient {
         this.authHeader = 'Basic ' + btoa(username + ':' + password);
     }
 
-    async _request(method, filename = '', body = null, extraHeaders = {}) {
+    async _request(method, filename = '', body = null, extraHeaders = {}, isBinary = false) {
         const headers = {
             'Authorization': this.authHeader,
             ...extraHeaders
         };
 
+        let payloadBody = null;
+        let isPayloadBinary = false;
+
         if (body) {
-            headers['Content-Type'] = 'application/json';
+            if (body instanceof Blob || body instanceof File) {
+                // Convert Blob/File to Data URL for message passing
+                payloadBody = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(body);
+                });
+                isPayloadBinary = true;
+            } else if (typeof body === 'object') {
+                payloadBody = JSON.stringify(body);
+                headers['Content-Type'] = 'application/json';
+            } else {
+                payloadBody = body; // String
+            }
         }
 
         const response = await chrome.runtime.sendMessage({
@@ -21,12 +38,20 @@ export class WebDAVClient {
             url: this.url + filename,
             method,
             headers,
-            body: body ? JSON.stringify(body) : null
+            body: payloadBody,
+            isBinary: isPayloadBinary || isBinary // Allow forcing binary response even for GET
         });
 
         if (!response.success) {
             throw new Error(response.error);
         }
+
+        // Convert base64 response back to Blob if requested
+        if (isBinary && typeof response.data === 'string' && response.data.startsWith('data:')) {
+            const res = await fetch(response.data);
+            response.data = await res.blob();
+        }
+
         return response;
     }
 
@@ -43,9 +68,12 @@ export class WebDAVClient {
         }
     }
 
-    async upload(filename, data) {
+    async upload(filename, data, contentType) {
         try {
-            const response = await this._request('PUT', filename, data);
+            const headers = {};
+            if (contentType) headers['Content-Type'] = contentType;
+
+            const response = await this._request('PUT', filename, data, headers);
             if (response.status >= 300) {
                 throw new Error(`HTTP ${response.status} ${response.statusText} for ${this.url + filename}`);
             }
@@ -56,9 +84,9 @@ export class WebDAVClient {
         }
     }
 
-    async download(filename) {
+    async download(filename, isBinary = false) {
         try {
-            const response = await this._request('GET', filename);
+            const response = await this._request('GET', filename, null, {}, isBinary);
             if (response.status === 404) return null;
             if (response.status >= 400) throw new Error(`HTTP ${response.status}`);
             return response.data;

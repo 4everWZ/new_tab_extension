@@ -1,5 +1,6 @@
-import { compressImage } from '../utils/images.js';
+import { compressImage, dataURLToBlob } from '../utils/images.js';
 import { loadWallpaper, displayWallpaper } from './wallpaper.js';
+import { db, STORES_CONSTANTS } from '../utils/db.js';
 
 const GRID_PRESET_VALUES = [3, 4, 5, 6, 7];
 
@@ -161,43 +162,48 @@ export function setupSettingsPanel(ctx) {
         document.getElementById('wallpaper-file')?.click();
     });
 
-    document.getElementById('wallpaper-file')?.addEventListener('change', (e) => {
+    document.getElementById('wallpaper-file')?.addEventListener('change', async (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        const reader = new FileReader();
-        reader.onload = async (event) => {
-            let wallpaperData = event.target.result;
-            const originalSize = wallpaperData.length;
+        try {
+            let blobToSave = file;
 
-            if (originalSize > 5 * 1024 * 1024) {
-                console.log('[Wallpaper] Compressing image from', (originalSize / 1024 / 1024).toFixed(2) + 'MB');
-                wallpaperData = await compressImage(wallpaperData);
-                console.log('[Wallpaper] Compressed to', (wallpaperData.length / 1024 / 1024).toFixed(2) + 'MB');
+            if (file.size > 5 * 1024 * 1024) {
+                // Compress if too large
+                const reader = new FileReader();
+                const compressedDataUrl = await new Promise((resolve) => {
+                    reader.onload = (event) => resolve(event.target.result);
+                    reader.readAsDataURL(file);
+                });
+
+                const compressed = await compressImage(compressedDataUrl);
+                blobToSave = dataURLToBlob(compressed);
             }
 
+            // Save Blob to IDB
+            await db.set(STORES_CONSTANTS.WALLPAPERS, 'local', blobToSave);
+
+            // Update Settings
             settings.wallpaperSource = 'local';
             const wallpaperSource = document.getElementById('wallpaper-source');
             if (wallpaperSource) wallpaperSource.value = 'local';
 
-            chrome.storage.local.set(
-                {
-                    settings: settings,
-                    wallpaperData: wallpaperData,
-                },
-                () => {
-                    if (chrome.runtime.lastError) {
-                        console.error('[Wallpaper] Save failed:', chrome.runtime.lastError.message);
-                        alert('壁纸保存失败：' + chrome.runtime.lastError.message);
-                    } else {
-                        displayWallpaper(ctx, wallpaperData);
-                    }
-                },
-            );
+            await ctx.actions.saveSettings();
 
+            // Display
+            const objectUrl = URL.createObjectURL(blobToSave);
+            displayWallpaper(ctx, objectUrl);
+            // Note: objectURL needs to be revoked eventually, but for single wallpaper it's okay? 
+            // Ideally displayWallpaper handles specific URL types.
+
+            // Clear input
             e.target.value = '';
-        };
-        reader.readAsDataURL(file);
+
+        } catch (err) {
+            console.error('[Wallpaper] Upload failed:', err);
+            alert('Upload failed: ' + err.message);
+        }
     });
 
     // Mask opacity

@@ -49,6 +49,29 @@ export function compressImage(dataUrl, maxSize = 8 * 1024 * 1024) {
     });
 }
 
+export function dataURLToBlob(dataURL) {
+    const arr = dataURL.split(',');
+    const mime = arr[0].match(/:(.*?);/)[1];
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+        u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new Blob([u8arr], { type: mime });
+}
+
+export async function fetchImageBlob(url) {
+    try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('Network response was not ok');
+        return await response.blob();
+    } catch (error) {
+        console.warn('Failed to fetch image blob directly:', error);
+        return null;
+    }
+}
+
 function blobToDataUrl(blob) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();

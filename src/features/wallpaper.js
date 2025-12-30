@@ -10,22 +10,27 @@ export async function getWallpaperUrl(ctx) {
         const data = await db.get(STORES_CONSTANTS.WALLPAPERS, 'local');
         if (data) {
             console.log('[getWallpaperUrl] ✓ Returning local wallpaper from IDB');
+            if (data instanceof Blob) {
+                return URL.createObjectURL(data);
+            }
             return data;
         }
     }
+    // ... bing/google ignore for now as they are URLs usually, or cached blobs?
+    // Bing/Google in this codebase seem to use external URLs or previous cached strings.
+    // If we want to cache their blobs, we would need to fetchBlob and save.
+    // Existing logic uses `db.get` for 'bing'/'google'.
+    // If we stored strings there, it works.
+
+    // For now only 'local' is guaranteed Blob by our change.
+
     if (settings.wallpaperSource === 'bing') {
         const data = await db.get(STORES_CONSTANTS.WALLPAPERS, 'bing');
-        if (data) {
-            console.log('[getWallpaperUrl] ✓ Returning Bing wallpaper from IDB');
-            return data;
-        }
+        if (data) return data;
     }
     if (settings.wallpaperSource === 'google') {
         const data = await db.get(STORES_CONSTANTS.WALLPAPERS, 'google');
-        if (data) {
-            console.log('[getWallpaperUrl] ✓ Returning Google wallpaper from IDB');
-            return data;
-        }
+        if (data) return data;
     }
 
     console.warn('[getWallpaperUrl] No wallpaper found in IDB for source:', settings.wallpaperSource);

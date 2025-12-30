@@ -12,7 +12,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 async function handleWebDAVRequest(data) {
-    const { url, method, headers, body } = data;
+    const { url, method, headers, body, isBinary } = data;
 
     try {
         const fetchOptions = {
@@ -21,42 +21,41 @@ async function handleWebDAVRequest(data) {
         };
 
         if (body) {
-            fetchOptions.body = body;
+            if (isBinary) {
+                // Body is passed as Base64 string from client
+                // Convert to Blob for fetch
+                const res = await fetch(body); // read data url
+                const blob = await res.blob();
+                fetchOptions.body = blob;
+            } else {
+                fetchOptions.body = body;
+            }
         }
 
         const response = await fetch(url, fetchOptions);
 
-        // We need to return the body, but message passing only supports JSON-serializable data.
-        // For binary downloads, we might need to return base64 or text.
-        // WebDAVClient expects JSON for 'download' of settings, and base64/blob handling for assets.
-        // Let's return text and handle parsing in the client.
-
-        const contentType = response.headers.get('content-type');
         let responseData;
 
-        if (contentType && contentType.includes('application/json')) {
-            responseData = await response.json();
+        if (isBinary) {
+            // Return binary data as Base64 string
+            const blob = await response.blob();
+            responseData = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result); // Returns data: URL
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
         } else {
-            // For binary or text
-            // To be safe for message passing, let's treat everything as text or base64?
-            // SimpleDB stores blobs.
-            // If we download an image, we want it as a Blob or Base64.
-            // Background script fetching a blob -> convert to base64 -> send to client -> client converts to blob?
-            // Or client stores base64 string directly (which we are doing for simpledb anyway? No, SimpleDB stores Blobs/ArrayBuffers usually, but our code in shortcuts.js used data URLs (strings)).
-
-            // Let's check how we store data.
-            // In shortcuts.js: `await db.set(..., id, raw)` where raw is data URL string.
-            // In sync.js, we `client.download(name + '.data')` and expect `{ content: ... }` wrapper if we uploaded it that way.
-
-            // The upload/download logic in `sync.js` sends JSON for settings and wrapper JSON `{ content: string }` for assets because `WebDAVClient.upload` does `JSON.stringify(data)`.
-            // So actually, ALL our WebDAV bodies are JSON!
-            // `sync.js`: `client.upload(blob.name + '.data', { content: blob.data });`
-            // So we only ever need to parse JSON responses or Text responses.
-            responseData = await response.text();
-            try {
-                responseData = JSON.parse(responseData);
-            } catch (e) {
-                // Keep as text if not JSON
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                responseData = await response.json();
+            } else {
+                responseData = await response.text();
+                try {
+                    responseData = JSON.parse(responseData);
+                } catch (e) {
+                    // Keep as text
+                }
             }
         }
 

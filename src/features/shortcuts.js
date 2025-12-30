@@ -1,5 +1,5 @@
 import { getFaviconUrl } from '../utils/favicon.js';
-import { checkImageTransparency, convertImageToDataUrl } from '../utils/images.js';
+import { checkImageTransparency, convertImageToDataUrl, dataURLToBlob, fetchImageBlob } from '../utils/images.js';
 
 import { db, STORES_CONSTANTS } from '../utils/db.js';
 
@@ -13,6 +13,55 @@ function getTotalPages(ctx) {
     const validApps = ctx.state.allApps.filter(app => app !== null && app !== undefined);
     const totalPages = Math.ceil((validApps.length || 0) / (ctx.state.pageSize || 1));
     return Math.max(1, totalPages);
+}
+
+export function setPage(ctx, pageIndex, options = {}) {
+    const totalPages = getTotalPages(ctx);
+    if (pageIndex < 0) pageIndex = 0;
+    if (pageIndex >= totalPages) pageIndex = totalPages - 1;
+
+    ctx.state.currentPage = pageIndex;
+
+    renderGrid(ctx);
+    renderPagination(ctx);
+}
+
+export function renderPagination(ctx) {
+    const { pagination } = ctx.dom;
+    if (!pagination) return;
+
+    const { allApps, pageSize, currentPage } = ctx.state;
+    const totalPages = Math.ceil((allApps.filter(a => a).length || 0) / (pageSize || 1));
+
+    pagination.innerHTML = '';
+
+    if (totalPages <= 1) {
+        pagination.style.display = 'none';
+        return;
+    }
+
+    pagination.style.display = 'flex';
+
+    for (let i = 0; i < totalPages; i++) {
+        const dot = document.createElement('span');
+        dot.className = 'dot';
+        dot.dataset.page = String(i);
+        if (i === currentPage) dot.classList.add('active');
+
+        dot.addEventListener('click', () => {
+            const direction = i > currentPage ? 'next' : 'prev';
+            setPage(ctx, i, { direction, animate: true });
+        });
+
+        pagination.appendChild(dot);
+    }
+}
+
+async function computeContentHash(blob) {
+    const buffer = await blob.arrayBuffer();
+    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 // ... existing code ...
@@ -36,7 +85,11 @@ async function applyImageIcon(ctx, iconEl, app, { defaultBg = '#f0f0f0' } = {}) 
         try {
             const data = await db.get(STORES_CONSTANTS.FAVICONS, id);
             if (data) {
-                url = data;
+                if (data instanceof Blob) {
+                    url = URL.createObjectURL(data);
+                } else {
+                    url = data; // Legacy DataURL string
+                }
             } else {
                 console.warn('[Shortcuts] Missing icon in IDB:', id);
                 applyTextFallback(iconEl, app);
@@ -75,8 +128,11 @@ async function applyImageIcon(ctx, iconEl, app, { defaultBg = '#f0f0f0' } = {}) 
                 const cached = await convertImageToDataUrl(url);
                 if (cached && cached.startsWith('data:') && app.img === url) {
                     // SAVE TO IDB
-                    const id = crypto.randomUUID();
-                    await db.set(STORES_CONSTANTS.FAVICONS, id, cached);
+                    const blob = dataURLToBlob(cached);
+                    const id = await computeContentHash(blob); // ID is now Hash
+
+                    // Check if already exists? (Get optional but set overwrites same content so safe)
+                    await db.set(STORES_CONSTANTS.FAVICONS, id, blob);
                     app.img = `idb://favicons/${id}`;
                     app.iconType = app.iconType || 'icon';
                     app.isTransparent = await checkImageTransparency(cached);
@@ -320,8 +376,9 @@ export async function addNewShortcut(ctx) {
     if (preview?.dataset?.imageData) {
         const raw = preview.dataset.imageData;
         if (raw.startsWith('data:')) {
-            const id = crypto.randomUUID();
-            await db.set(STORES_CONSTANTS.FAVICONS, id, raw);
+            const blob = dataURLToBlob(raw);
+            const id = await computeContentHash(blob);
+            await db.set(STORES_CONSTANTS.FAVICONS, id, blob);
             newApp.img = `idb://favicons/${id}`;
         } else {
             newApp.img = raw;
@@ -363,28 +420,46 @@ export async function addNewShortcut(ctx) {
         const img = new Image();
         let loaded = false;
 
-        img.onload = () => {
+        img.onload = async () => {
             if (loaded) return;
             loaded = true;
 
-            convertImageToDataUrl(faviconUrl).then(async (cachedUrl) => {
-                if (cachedUrl && cachedUrl.startsWith('data:')) {
-                    const id = crypto.randomUUID();
-                    await db.set(STORES_CONSTANTS.FAVICONS, id, cachedUrl);
-                    newApp.img = `idb://favicons/${id}`;
-                } else {
-                    newApp.img = cachedUrl;
-                }
-                newApp.iconType = 'icon';
+            // Priority: Try to fetch raw blob to preserve original format (e.g. .ico, .webp)
+            let blob = await fetchImageBlob(faviconUrl);
+            let finalUrl = faviconUrl;
 
-                checkImageTransparency(cachedUrl).then((hasTransparency) => {
-                    newApp.isTransparent = hasTransparency;
-                    ctx.state.allApps.push(newApp);
-                    ctx.actions.saveApps();
-                    ctx.dom.shortcutForm?.reset();
-                    preview?.classList.remove('show');
-                    render(ctx);
-                });
+            // Fallback: Convert to PNG via canvas if fetch failed or if we need standardizing?
+            // User requested: "Don't turn into PNG". So we prefer raw blob.
+
+            if (blob) {
+                const id = await computeContentHash(blob);
+                await db.set(STORES_CONSTANTS.FAVICONS, id, blob);
+                newApp.img = `idb://favicons/${id}`;
+                finalUrl = URL.createObjectURL(blob); // for checkTransparency
+            } else {
+                // Fallback to canvas conversion
+                const cachedUrl = await convertImageToDataUrl(faviconUrl);
+                if (cachedUrl && cachedUrl.startsWith('data:')) {
+                    blob = dataURLToBlob(cachedUrl);
+                    const id = await computeContentHash(blob);
+                    await db.set(STORES_CONSTANTS.FAVICONS, id, blob);
+                    newApp.img = `idb://favicons/${id}`;
+                    finalUrl = cachedUrl;
+                } else {
+                    newApp.img = cachedUrl || faviconUrl;
+                    finalUrl = newApp.img;
+                }
+            }
+
+            newApp.iconType = 'icon';
+
+            checkImageTransparency(finalUrl).then((hasTransparency) => {
+                newApp.isTransparent = hasTransparency;
+                ctx.state.allApps.push(newApp);
+                ctx.actions.saveApps();
+                ctx.dom.shortcutForm?.reset();
+                preview?.classList.remove('show');
+                render(ctx);
             });
         };
 
@@ -924,28 +999,6 @@ export function deleteApp(ctx, index) {
     renderPagination(ctx);
 }
 
-export function renderPagination(ctx) {
-    const { pagination } = ctx.dom;
-    const { allApps, pageSize, currentPage } = ctx.state;
-
-    pagination.innerHTML = '';
-
-    const totalPages = Math.ceil(allApps.length / pageSize);
-    if (totalPages <= 1) return;
-
-    for (let i = 0; i < totalPages; i++) {
-        const dot = document.createElement('span');
-        dot.className = 'dot';
-        dot.dataset.page = String(i);
-        if (i === currentPage) dot.classList.add('active');
-        dot.addEventListener('click', () => {
-            const direction = i > ctx.state.currentPage ? 'next' : i < ctx.state.currentPage ? 'prev' : 'none';
-            setPage(ctx, i, { direction, animate: true });
-        });
-
-        pagination.appendChild(dot);
-    }
-}
 
 function handleDragStart(ctx, e) {
     const el = e.currentTarget;
