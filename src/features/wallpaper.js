@@ -1,28 +1,34 @@
 import { storageGet, storageSet } from '../utils/storage.js';
+import { db, STORES_CONSTANTS } from '../utils/db.js';
 
-export function getWallpaperUrl(ctx, storageResult) {
+export async function getWallpaperUrl(ctx) {
     const { settings } = ctx.state;
 
-    console.log('[getWallpaperUrl] Checking source:', settings.wallpaperSource, {
-        hasLocalData: !!storageResult.wallpaperData,
-        hasBingData: !!storageResult.currentBingWallpaper,
-        hasGoogleData: !!storageResult.currentGoogleWallpaper,
-    });
+    console.log('[getWallpaperUrl] Checking source:', settings.wallpaperSource);
 
-    if (settings.wallpaperSource === 'local' && storageResult.wallpaperData) {
-        console.log('[getWallpaperUrl] ✓ Returning local wallpaper');
-        return storageResult.wallpaperData;
+    if (settings.wallpaperSource === 'local') {
+        const data = await db.get(STORES_CONSTANTS.WALLPAPERS, 'local');
+        if (data) {
+            console.log('[getWallpaperUrl] ✓ Returning local wallpaper from IDB');
+            return data;
+        }
     }
-    if (settings.wallpaperSource === 'bing' && storageResult.currentBingWallpaper) {
-        console.log('[getWallpaperUrl] ✓ Returning Bing wallpaper');
-        return storageResult.currentBingWallpaper;
+    if (settings.wallpaperSource === 'bing') {
+        const data = await db.get(STORES_CONSTANTS.WALLPAPERS, 'bing');
+        if (data) {
+            console.log('[getWallpaperUrl] ✓ Returning Bing wallpaper from IDB');
+            return data;
+        }
     }
-    if (settings.wallpaperSource === 'google' && storageResult.currentGoogleWallpaper) {
-        console.log('[getWallpaperUrl] ✓ Returning Google wallpaper');
-        return storageResult.currentGoogleWallpaper;
+    if (settings.wallpaperSource === 'google') {
+        const data = await db.get(STORES_CONSTANTS.WALLPAPERS, 'google');
+        if (data) {
+            console.log('[getWallpaperUrl] ✓ Returning Google wallpaper from IDB');
+            return data;
+        }
     }
 
-    console.warn('[getWallpaperUrl] No wallpaper found for source:', settings.wallpaperSource);
+    console.warn('[getWallpaperUrl] No wallpaper found in IDB for source:', settings.wallpaperSource);
     return null;
 }
 
@@ -35,7 +41,16 @@ export async function displayWallpaper(ctx, imageUrl, saveKey = null) {
     body?.classList.add('has-wallpaper');
 
     if (saveKey) {
-        await storageSet({ [saveKey]: imageUrl });
+        // Map saveKey to IDB keys
+        let dbKey = null;
+        if (saveKey === 'wallpaperData') dbKey = 'local';
+        else if (saveKey === 'currentBingWallpaper') dbKey = 'bing';
+        else if (saveKey === 'currentGoogleWallpaper') dbKey = 'google';
+
+        if (dbKey) {
+            await db.set(STORES_CONSTANTS.WALLPAPERS, dbKey, imageUrl);
+        }
+        // Legacy: we used to verify saving here
     }
 
     console.log('[Wallpaper] Wallpaper displayed, saved key:', saveKey);
@@ -49,12 +64,13 @@ export async function loadWallpaper(ctx) {
 
     if (settings.wallpaperSource === 'local') {
         console.log('[Wallpaper] Loading local wallpaper...');
-        const result = await storageGet(['wallpaperData']);
-        if (result.wallpaperData) {
-            await displayWallpaper(ctx, result.wallpaperData, 'wallpaperData');
-            console.log('[Wallpaper] Local wallpaper loaded and saved');
+        const data = await db.get(STORES_CONSTANTS.WALLPAPERS, 'local');
+        if (data) {
+            await displayWallpaper(ctx, data, 'wallpaperData');
+            console.log('[Wallpaper] Local wallpaper loaded from IDB');
         } else {
-            console.log('[Wallpaper] No local wallpaper found');
+            console.log('[Wallpaper] No local wallpaper found in IDB');
+            // Maybe fallback to default or nothing
         }
         wallpaperRefreshBtn?.classList.remove('show');
         return;

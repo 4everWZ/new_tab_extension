@@ -1,6 +1,8 @@
 import { getFaviconUrl } from '../utils/favicon.js';
 import { checkImageTransparency, convertImageToDataUrl } from '../utils/images.js';
 
+import { db, STORES_CONSTANTS } from '../utils/db.js';
+
 function t(key) {
     return typeof window.t === 'function' ? window.t(key) : key;
 }
@@ -13,122 +15,7 @@ function getTotalPages(ctx) {
     return Math.max(1, totalPages);
 }
 
-function animatePageEnter(ctx, direction) {
-    const el = ctx.dom.grid;
-    if (!el) return;
-    
-    // Calculate full slide distance: grid width + 1 icon on each side
-    const gridCols = ctx.state.settings.gridCols || 5;
-    const iconSize = ctx.state.settings.iconSize || 90;
-    const gap = 50;
-    const slideDistance = gridCols * (iconSize + gap) + iconSize * 2;
-    
-    const startX = direction === 'prev' ? -slideDistance : direction === 'next' ? slideDistance : 0;
-    
-    // Force immediate non-transition jump to start position
-    el.style.transition = 'none';
-    el.style.transform = `translateX(${startX}px)`;
-    
-    // Force reflow
-    void el.offsetHeight;
-    
-    // Restore transition and slide to final position
-    el.style.transition = '';
-    requestAnimationFrame(() => {
-        el.style.transform = 'translateX(0)';
-    });
-}
-
-function setPage(ctx, nextPage, { direction = 'none', animate = true } = {}) {
-    const totalPages = getTotalPages(ctx);
-    const clamped = Math.min(Math.max(0, nextPage), totalPages - 1);
-    if (clamped === ctx.state.currentPage) return;
-    ctx.state.currentPage = clamped;
-    render(ctx);
-    if (animate) animatePageEnter(ctx, direction);
-}
-
-function moveArrayItem(arr, fromIndex, toIndex) {
-    if (fromIndex === toIndex) return toIndex;
-    const [item] = arr.splice(fromIndex, 1);
-    const clampedTo = Math.min(Math.max(0, toIndex), arr.length);
-    arr.splice(clampedTo, 0, item);
-    return clampedTo;
-}
-
-function animateDropAtIndex(ctx, index) {
-    const el = ctx.dom.grid?.querySelector?.(`.app-item[data-index="${index}"]`);
-    if (!el) return;
-    el.classList.add('drop-animate');
-    setTimeout(() => el.classList.remove('drop-animate'), 450);
-}
-
-// Auto page when dragging near edges
-let edgePageTimer = null;
-let edgeHighlightSide = null;
-
-function showEdgeHighlight(side) {
-    const gridWrapper = document.querySelector('.grid-wrapper');
-    if (!gridWrapper) return;
-    gridWrapper.classList.remove('edge-highlight-left', 'edge-highlight-right');
-    if (side) {
-        gridWrapper.classList.add(`edge-highlight-${side}`);
-        edgeHighlightSide = side;
-    } else {
-        edgeHighlightSide = null;
-    }
-}
-
-function maybeAutoPageOnEdge(ctx, clientX) {
-    const gridWrapper = document.querySelector('.grid-wrapper');
-    if (!gridWrapper) return;
-    const rect = gridWrapper.getBoundingClientRect();
-    const EDGE = 80; // px
-    const totalPages = getTotalPages(ctx);
-    if (totalPages <= 1) {
-        showEdgeHighlight(null);
-        return;
-    }
-
-    let direction = null;
-    let side = null;
-    let targetPage = null;
-    
-    // Left edge: go to previous page (circular)
-    if (clientX - rect.left < EDGE) {
-        direction = 'prev';
-        side = 'left';
-        targetPage = ctx.state.currentPage - 1 < 0 ? totalPages - 1 : ctx.state.currentPage - 1;
-    }
-    // Right edge: go to next page (circular)
-    else if (rect.right - clientX < EDGE) {
-        direction = 'next';
-        side = 'right';
-        targetPage = ctx.state.currentPage + 1 >= totalPages ? 0 : ctx.state.currentPage + 1;
-    }
-    
-    
-    if (!direction) {
-        if (edgePageTimer) {
-            clearTimeout(edgePageTimer);
-            edgePageTimer = null;
-        }
-        showEdgeHighlight(null);
-        return;
-    }
-
-    // Show highlight immediately when entering edge
-    if (edgeHighlightSide !== side) {
-        showEdgeHighlight(side);
-    }
-
-    if (edgePageTimer) return;
-    edgePageTimer = setTimeout(() => {
-        setPage(ctx, targetPage, { direction, animate: true });
-        edgePageTimer = null;
-        // Keep highlight and restart timer if still in edge
-    }, 500);
-}
+// ... existing code ...
 
 function applyTextFallback(iconEl, app) {
     iconEl.style.backgroundImage = 'none';
@@ -136,11 +23,30 @@ function applyTextFallback(iconEl, app) {
     iconEl.innerText = app.text || app.name?.[0] || '';
 }
 
-function applyImageIcon(ctx, iconEl, app, { defaultBg = '#f0f0f0' } = {}) {
-    const url = app.img;
+async function applyImageIcon(ctx, iconEl, app, { defaultBg = '#f0f0f0' } = {}) {
+    let url = app.img;
     if (!url) {
         applyTextFallback(iconEl, app);
         return;
+    }
+
+    // Resolve IDB reference
+    if (url.startsWith('idb://')) {
+        const id = url.split('/').pop();
+        try {
+            const data = await db.get(STORES_CONSTANTS.FAVICONS, id);
+            if (data) {
+                url = data;
+            } else {
+                console.warn('[Shortcuts] Missing icon in IDB:', id);
+                applyTextFallback(iconEl, app);
+                return;
+            }
+        } catch (e) {
+            console.error('[Shortcuts] Error loading icon from IDB:', e);
+            applyTextFallback(iconEl, app);
+            return;
+        }
     }
 
     iconEl.innerText = '';
@@ -162,21 +68,26 @@ function applyImageIcon(ctx, iconEl, app, { defaultBg = '#f0f0f0' } = {}) {
         finished = true;
 
         // Cache to data URL when network is good (best-effort).
-        if (_iconCacheInFlight.has(url)) return;
-        _iconCacheInFlight.add(url);
-        try {
-            const cached = await convertImageToDataUrl(url);
-            if (cached && cached.startsWith('data:') && app.img === url) {
-                app.img = cached;
-                app.iconType = app.iconType || 'icon';
-                app.isTransparent = await checkImageTransparency(cached);
-                ctx.actions.saveApps();
+        // Only valid for http/https URLs, not data: or idb:
+        if (url.startsWith('http') && !_iconCacheInFlight.has(url)) {
+            _iconCacheInFlight.add(url);
+            try {
+                const cached = await convertImageToDataUrl(url);
+                if (cached && cached.startsWith('data:') && app.img === url) {
+                    // SAVE TO IDB
+                    const id = crypto.randomUUID();
+                    await db.set(STORES_CONSTANTS.FAVICONS, id, cached);
+                    app.img = `idb://favicons/${id}`;
+                    app.iconType = app.iconType || 'icon';
+                    app.isTransparent = await checkImageTransparency(cached);
+                    ctx.actions.saveApps();
 
-                iconEl.style.backgroundImage = `url(${cached})`;
-                iconEl.style.backgroundColor = defaultBg;
+                    // Update UI
+                    iconEl.style.backgroundImage = `url(${cached})`;
+                }
+            } finally {
+                _iconCacheInFlight.delete(url);
             }
-        } finally {
-            _iconCacheInFlight.delete(url);
         }
     };
     probe.onerror = () => {
@@ -226,139 +137,139 @@ export function setupShortcutForm(ctx) {
 
         const gridWrapper = document.querySelector('.grid-wrapper');
         gridWrapper?.addEventListener('wheel', ctx._handlers.onGridWheel, { passive: false });
-    
 
-    // URL parse - add listeners only once
-    const urlInput = document.getElementById('app-url');
-    const parseUrlBtn = document.getElementById('parse-url-btn');
 
-    if (urlInput && !ctx._handlers._urlBlurAttached) {
-        urlInput.addEventListener('blur', () => {
-            const url = urlInput.value.trim();
-            if (url && parseUrlBtn) parseUrlBtn.click();
-        });
-        ctx._handlers._urlBlurAttached = true;
-    }
+        // URL parse - add listeners only once
+        const urlInput = document.getElementById('app-url');
+        const parseUrlBtn = document.getElementById('parse-url-btn');
 
-    if (parseUrlBtn && !ctx._handlers._parseUrlAttached) {
-        parseUrlBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            const url = urlInput?.value.trim();
-            if (!url) {
-                alert('请输入有效的URL');
-                return;
-            }
+        if (urlInput && !ctx._handlers._urlBlurAttached) {
+            urlInput.addEventListener('blur', () => {
+                const url = urlInput.value.trim();
+                if (url && parseUrlBtn) parseUrlBtn.click();
+            });
+            ctx._handlers._urlBlurAttached = true;
+        }
 
-            try {
-                const urlObj = new URL(url);
-                const hostname = urlObj.hostname;
-
-                const nameInput = document.getElementById('app-name');
-                if (nameInput && !nameInput.value.trim()) {
-                    const domainName = hostname.replace('www.', '').split('.')[0];
-                    nameInput.value = domainName.charAt(0).toUpperCase() + domainName.slice(1);
-                }
-
-                parseUrlBtn.disabled = true;
-                parseUrlBtn.textContent = '加载中...';
-
-                const faviconUrls = getFaviconUrl(url);
-                if (faviconUrls.length === 0) {
-                    parseUrlBtn.disabled = false;
-                    parseUrlBtn.textContent = t('parse_url');
+        if (parseUrlBtn && !ctx._handlers._parseUrlAttached) {
+            parseUrlBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const url = urlInput?.value.trim();
+                if (!url) {
+                    alert('请输入有效的URL');
                     return;
                 }
 
-                // Switch to upload icon mode
-                const uploadRadio = document.querySelector('input[name="icon-type"][value="upload"]');
-                if (uploadRadio) uploadRadio.checked = true;
-                document.getElementById('text-icon-options')?.classList.add('hidden');
-                document.getElementById('upload-icon-options')?.classList.remove('hidden');
+                try {
+                    const urlObj = new URL(url);
+                    const hostname = urlObj.hostname;
 
-                let currentIndex = 0;
+                    const nameInput = document.getElementById('app-name');
+                    if (nameInput && !nameInput.value.trim()) {
+                        const domainName = hostname.replace('www.', '').split('.')[0];
+                        nameInput.value = domainName.charAt(0).toUpperCase() + domainName.slice(1);
+                    }
 
-                function tryLoadFavicon() {
-                    if (currentIndex >= faviconUrls.length) {
+                    parseUrlBtn.disabled = true;
+                    parseUrlBtn.textContent = '加载中...';
+
+                    const faviconUrls = getFaviconUrl(url);
+                    if (faviconUrls.length === 0) {
                         parseUrlBtn.disabled = false;
                         parseUrlBtn.textContent = t('parse_url');
-                        alert('无法获取网站图标，请手动上传');
                         return;
                     }
 
-                    const faviconUrl = faviconUrls[currentIndex];
-                    currentIndex++;
+                    // Switch to upload icon mode
+                    const uploadRadio = document.querySelector('input[name="icon-type"][value="upload"]');
+                    if (uploadRadio) uploadRadio.checked = true;
+                    document.getElementById('text-icon-options')?.classList.add('hidden');
+                    document.getElementById('upload-icon-options')?.classList.remove('hidden');
 
-                    const img = new Image();
-                    let loaded = false;
+                    let currentIndex = 0;
 
-                    img.onload = () => {
-                        if (loaded) return;
-                        loaded = true;
+                    function tryLoadFavicon() {
+                        if (currentIndex >= faviconUrls.length) {
+                            parseUrlBtn.disabled = false;
+                            parseUrlBtn.textContent = t('parse_url');
+                            alert('无法获取网站图标，请手动上传');
+                            return;
+                        }
 
-                        const preview = document.getElementById('image-preview');
-                        preview.style.backgroundImage = `url(${faviconUrl})`;
-                        preview.classList.add('show');
-                        preview.dataset.imageData = faviconUrl;
+                        const faviconUrl = faviconUrls[currentIndex];
+                        currentIndex++;
 
-                        parseUrlBtn.disabled = false;
-                        parseUrlBtn.textContent = t('parse_url');
-                    };
+                        const img = new Image();
+                        let loaded = false;
 
-                    img.onerror = () => {
-                        if (loaded) return;
-                        loaded = true;
-                        setTimeout(tryLoadFavicon, 100);
-                    };
+                        img.onload = () => {
+                            if (loaded) return;
+                            loaded = true;
 
-                    img.src = faviconUrl;
-                    setTimeout(() => {
-                        if (loaded) return;
-                        loaded = true;
-                        img.src = '';
-                        tryLoadFavicon();
-                    }, 3000);
+                            const preview = document.getElementById('image-preview');
+                            preview.style.backgroundImage = `url(${faviconUrl})`;
+                            preview.classList.add('show');
+                            preview.dataset.imageData = faviconUrl;
+
+                            parseUrlBtn.disabled = false;
+                            parseUrlBtn.textContent = t('parse_url');
+                        };
+
+                        img.onerror = () => {
+                            if (loaded) return;
+                            loaded = true;
+                            setTimeout(tryLoadFavicon, 100);
+                        };
+
+                        img.src = faviconUrl;
+                        setTimeout(() => {
+                            if (loaded) return;
+                            loaded = true;
+                            img.src = '';
+                            tryLoadFavicon();
+                        }, 3000);
+                    }
+
+                    tryLoadFavicon();
+                } catch {
+                    alert('请输入有效的URL (例: https://example.com)');
                 }
+            });
+            ctx._handlers._parseUrlAttached = true;
+        }
 
-                tryLoadFavicon();
-            } catch {
-                alert('请输入有效的URL (例: https://example.com)');
-            }
+        // Switch icon type - add listeners only once
+        if (iconTypeRadios && !ctx._handlers._iconTypeRadiosAttached) {
+            iconTypeRadios.forEach((radio) => {
+                radio.addEventListener('change', (e) => {
+                    const textOptions = document.getElementById('text-icon-options');
+                    const uploadOptions = document.getElementById('upload-icon-options');
+                    if (e.target.value === 'text') {
+                        textOptions?.classList.remove('hidden');
+                        uploadOptions?.classList.add('hidden');
+                    } else {
+                        textOptions?.classList.add('hidden');
+                        uploadOptions?.classList.remove('hidden');
+                    }
+                });
+            });
+            ctx._handlers._iconTypeRadiosAttached = true;
+        }
+
+        // Image upload preview - add listener only once
+        document.getElementById('app-image')?.addEventListener('change', (e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const preview = document.getElementById('image-preview');
+                preview.style.backgroundImage = `url(${event.target.result})`;
+                preview.classList.add('show');
+                preview.dataset.imageData = event.target.result;
+            };
+            reader.readAsDataURL(file);
         });
-        ctx._handlers._parseUrlAttached = true;
-    }
-
-    // Switch icon type - add listeners only once
-    if (iconTypeRadios && !ctx._handlers._iconTypeRadiosAttached) {
-        iconTypeRadios.forEach((radio) => {
-        radio.addEventListener('change', (e) => {
-            const textOptions = document.getElementById('text-icon-options');
-            const uploadOptions = document.getElementById('upload-icon-options');
-            if (e.target.value === 'text') {
-                textOptions?.classList.remove('hidden');
-                uploadOptions?.classList.add('hidden');
-            } else {
-                textOptions?.classList.add('hidden');
-                uploadOptions?.classList.remove('hidden');
-            }
-        });
-    });
-        ctx._handlers._iconTypeRadiosAttached = true;
-    }
-
-    // Image upload preview - add listener only once
-    document.getElementById('app-image')?.addEventListener('change', (e) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            const preview = document.getElementById('image-preview');
-            preview.style.backgroundImage = `url(${event.target.result})`;
-            preview.classList.add('show');
-            preview.dataset.imageData = event.target.result;
-        };
-        reader.readAsDataURL(file);
-    });
         ctx._handlers._appImageAttached = true;
     }
 
@@ -384,7 +295,7 @@ export function setupShortcutForm(ctx) {
     }
 }
 
-export function addNewShortcut(ctx) {
+export async function addNewShortcut(ctx) {
     const name = document.getElementById('app-name')?.value.trim();
     const url = document.getElementById('app-url')?.value.trim();
     const iconType = document.querySelector('input[name="icon-type"]:checked')?.value;
@@ -407,7 +318,14 @@ export function addNewShortcut(ctx) {
     // upload/icon
     const preview = document.getElementById('image-preview');
     if (preview?.dataset?.imageData) {
-        newApp.img = preview.dataset.imageData;
+        const raw = preview.dataset.imageData;
+        if (raw.startsWith('data:')) {
+            const id = crypto.randomUUID();
+            await db.set(STORES_CONSTANTS.FAVICONS, id, raw);
+            newApp.img = `idb://favicons/${id}`;
+        } else {
+            newApp.img = raw;
+        }
         newApp.iconType = 'upload';
         ctx.state.allApps.push(newApp);
         ctx.actions.saveApps();
@@ -449,8 +367,14 @@ export function addNewShortcut(ctx) {
             if (loaded) return;
             loaded = true;
 
-            convertImageToDataUrl(faviconUrl).then((cachedUrl) => {
-                newApp.img = cachedUrl;
+            convertImageToDataUrl(faviconUrl).then(async (cachedUrl) => {
+                if (cachedUrl && cachedUrl.startsWith('data:')) {
+                    const id = crypto.randomUUID();
+                    await db.set(STORES_CONSTANTS.FAVICONS, id, cachedUrl);
+                    newApp.img = `idb://favicons/${id}`;
+                } else {
+                    newApp.img = cachedUrl;
+                }
                 newApp.iconType = 'icon';
 
                 checkImageTransparency(cachedUrl).then((hasTransparency) => {
@@ -492,7 +416,7 @@ export function renderGrid(ctx) {
     const { pageSize, currentPage, allApps, isEditMode } = ctx.state;
 
     grid.innerHTML = '';
-    
+
     // Add global dragover listener for edge detection in edit mode
     if (isEditMode) {
         // Clean up old listener if exists
@@ -502,7 +426,7 @@ export function renderGrid(ctx) {
                 gridWrapper.removeEventListener('dragover', ctx._globalDragOver);
             }
         }
-        
+
         // Add new listener
         const gridWrapper = document.querySelector('.grid-wrapper');
         if (gridWrapper) {
@@ -526,7 +450,7 @@ export function renderGrid(ctx) {
 
     // Only render actual apps
     pageApps.forEach((app, index) => {
-        
+
         const realIndex = start + index;
         const item = document.createElement('a');
         item.href = isEditMode ? 'javascript:void(0)' : app.url;
@@ -653,7 +577,7 @@ function exitEditModeOnContextMenu(ctx, e) {
 export function exitEditMode(ctx) {
     ctx.state.isEditMode = false;
     ctx.state.editingItemIndex = null;
-    
+
     // Clean up click handlers
     if (ctx._handlers?.exitEditModeOnClick) {
         document.removeEventListener('click', ctx._handlers.exitEditModeOnClick, true);
@@ -661,7 +585,7 @@ export function exitEditMode(ctx) {
     if (ctx._handlers?.exitEditModeOnContextMenu) {
         document.removeEventListener('contextmenu', ctx._handlers.exitEditModeOnContextMenu, true);
     }
-    
+
     // Clean up dragover listener
     if (ctx._gridDragOverAttached && ctx._globalDragOver) {
         const gridWrapper = document.querySelector('.grid-wrapper');
@@ -671,7 +595,7 @@ export function exitEditMode(ctx) {
         ctx._gridDragOverAttached = false;
         ctx._globalDragOver = null;
     }
-    
+
     renderGrid(ctx);
 }
 
@@ -918,7 +842,15 @@ export function editAppIcon(ctx, index) {
 
             // Prefer caching as data URL when possible.
             const cached = raw.startsWith('data:') ? raw : await convertImageToDataUrl(raw);
-            target.img = cached;
+
+            if (cached && cached.startsWith('data:')) {
+                const id = crypto.randomUUID();
+                await db.set(STORES_CONSTANTS.FAVICONS, id, cached);
+                target.img = `idb://favicons/${id}`;
+            } else {
+                target.img = cached;
+            }
+
             target.isTransparent = await checkImageTransparency(cached);
             ctx.actions.saveApps();
             renderGrid(ctx);
@@ -942,7 +874,14 @@ export function editAppIcon(ctx, index) {
 
             // Cache to data URL to avoid network failures.
             const cached = chosen.startsWith('data:') ? chosen : await convertImageToDataUrl(chosen);
-            target.img = cached;
+
+            if (cached && cached.startsWith('data:')) {
+                const id = crypto.randomUUID();
+                await db.set(STORES_CONSTANTS.FAVICONS, id, cached);
+                target.img = `idb://favicons/${id}`;
+            } else {
+                target.img = cached;
+            }
 
             // Reuse stored transparency if it's the same image and known.
             if (chosen === app.img && app.isTransparent !== undefined) {
@@ -1047,27 +986,27 @@ function handleDrop(ctx, e) {
         // Get global indices directly from dataset
         const dropIdx = parseInt(el.dataset.globalIndex);
         const dragIdx = ctx.state.draggedIndex;
-        
+
         if (dropIdx === dragIdx) {
             return false;
         }
-        
+
         // Filter out null values first
         const validApps = ctx.state.allApps.filter(app => app !== null && app !== undefined);
-        
+
         // Swap using valid array
         const temp = validApps[dragIdx];
         validApps[dragIdx] = validApps[dropIdx];
         validApps[dropIdx] = temp;
-        
+
         // Update main array with cleaned data
         ctx.state.allApps = validApps;
         ctx.actions.saveApps();
-        
+
         // Stay on current page (drop page)
         renderGrid(ctx);
         renderPagination(ctx);
-        
+
         // Animate the drop target
         const localDropIndex = dropIdx % ctx.state.pageSize;
         setTimeout(() => animateDropAtIndex(ctx, localDropIndex), 0);
@@ -1086,21 +1025,21 @@ function handleDropOnEmpty(ctx, e, targetGlobalIndex) {
     if (ctx.state.draggedIndex != null) {
         // For empty slots, we want to move (not swap)
         const draggedItem = ctx.state.allApps[ctx.state.draggedIndex];
-        
+
         // Remove from original position
         ctx.state.allApps.splice(ctx.state.draggedIndex, 1);
-        
+
         // Adjust target index if we removed an item before it
         let adjustedTarget = targetGlobalIndex;
         if (ctx.state.draggedIndex < targetGlobalIndex) {
             adjustedTarget--;
         }
-        
+
         // Insert at new position
         ctx.state.allApps.splice(adjustedTarget, 0, draggedItem);
 
         ctx.actions.saveApps();
-        
+
         // Navigate to target page
         const targetPage = Math.floor(adjustedTarget / ctx.state.pageSize);
         if (targetPage !== ctx.state.currentPage) {

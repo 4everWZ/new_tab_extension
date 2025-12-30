@@ -132,6 +132,14 @@ export function setupSettingsModalUIValues(ctx) {
     if (languageSelect && window.currentLanguage) {
         languageSelect.value = window.currentLanguage;
     }
+
+    // WebDAV
+    const webdavUrl = document.getElementById('webdav-url');
+    const webdavUser = document.getElementById('webdav-username');
+    const webdavPass = document.getElementById('webdav-password');
+    if (webdavUrl) webdavUrl.value = settings.webdavUrl || '';
+    if (webdavUser) webdavUser.value = settings.webdavUsername || '';
+    if (webdavPass) webdavPass.value = settings.webdavPassword || '';
 }
 
 export function setupSettingsPanel(ctx) {
@@ -384,5 +392,68 @@ export function setupSettingsPanel(ctx) {
     // Language
     document.getElementById('language-select')?.addEventListener('change', (e) => {
         window.setLanguage?.(e.target.value);
+    });
+
+    // WebDAV Settings
+    const webdavInputs = ['webdav-url', 'webdav-username', 'webdav-password'];
+    webdavInputs.forEach(id => {
+        document.getElementById(id)?.addEventListener('change', async (e) => {
+            const key = id.replace(/-([a-z])/g, (g) => g[1].toUpperCase()).replace('Url', 'Url'); // webdav-url -> webdavUrl
+            // Fix mapping: webdav-url -> webdavUrl, webdav-username -> webdavUsername
+            let settingKey = '';
+            if (id === 'webdav-url') settingKey = 'webdavUrl';
+            else if (id === 'webdav-username') settingKey = 'webdavUsername';
+            else if (id === 'webdav-password') settingKey = 'webdavPassword';
+
+            settings[settingKey] = e.target.value.trim();
+            await ctx.actions.saveSettings();
+        });
+    });
+
+    document.getElementById('webdav-check-btn')?.addEventListener('click', async () => {
+        const { checkWebDAVConnection } = await import('./sync.js');
+        const statusEl = document.getElementById('sync-status');
+        if (statusEl) statusEl.textContent = 'Checking connection...';
+        try {
+            const ok = await checkWebDAVConnection(ctx);
+            if (statusEl) {
+                statusEl.textContent = ok ? 'Connection Successful!' : 'Connection Failed!';
+                statusEl.style.color = ok ? 'green' : 'red';
+            }
+        } catch (e) {
+            if (statusEl) {
+                statusEl.textContent = 'Error: ' + e.message;
+                statusEl.style.color = 'red';
+            }
+        }
+    });
+
+    document.getElementById('sync-upload-btn')?.addEventListener('click', async () => {
+        if (!confirm('This will overwrite remote data. Continue?')) return;
+        const { syncUpload } = await import('./sync.js');
+        try {
+            await syncUpload(ctx);
+        } catch (e) {
+            alert('Upload failed: ' + e.message);
+        }
+    });
+
+    document.getElementById('sync-download-btn')?.addEventListener('click', async () => {
+        if (!confirm('This will overwrite local data. Continue?')) return;
+        const { syncDownload } = await import('./sync.js');
+        try {
+            await syncDownload(ctx, 'overwrite');
+        } catch (e) {
+            alert('Download failed: ' + e.message);
+        }
+    });
+
+    document.getElementById('sync-merge-btn')?.addEventListener('click', async () => {
+        const { syncDownload } = await import('./sync.js');
+        try {
+            await syncDownload(ctx, 'merge');
+        } catch (e) {
+            alert('Merge failed: ' + e.message);
+        }
     });
 }

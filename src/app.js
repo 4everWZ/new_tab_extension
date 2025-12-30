@@ -1,6 +1,6 @@
 import { createInitialState } from './state.js';
 import { getDom } from './dom.js';
-import { storageGet, storageSet } from './utils/storage.js';
+import { storageGet, storageSet, migrateToIndexedDB } from './utils/storage.js';
 import { applySettings, applySettingsExceptMask } from './ui/settingsApply.js';
 import { setupSidebar } from './features/sidebar.js';
 import { restoreCustomEngineOptions, setupSearch, syncEngineActiveUI } from './features/search.js';
@@ -9,12 +9,19 @@ import { render, setupShortcutForm } from './features/shortcuts.js';
 import { initializeGridPresets, setupSettingsModalUIValues, setupSettingsPanel } from './features/settingsPanel.js';
 
 async function loadData(ctx) {
+    // 1. Run migration
+    try {
+        await migrateToIndexedDB();
+    } catch (e) {
+        console.error('[App] Migration failed:', e);
+    }
+
     const result = await storageGet([
         'apps',
         'settings',
-        'wallpaperData',
-        'currentBingWallpaper',
-        'currentGoogleWallpaper',
+        // 'wallpaperData', // moved to IDB
+        // 'currentBingWallpaper', // moved to IDB
+        // 'currentGoogleWallpaper', // moved to IDB
         'customSearchEngines',
         'customEngineIcons',
     ]);
@@ -89,19 +96,16 @@ async function loadData(ctx) {
     syncEngineActiveUI(ctx);
 
     // Wallpaper
-    const wallpaperUrl = getWallpaperUrl(ctx, result);
+    const wallpaperUrl = await getWallpaperUrl(ctx);
     console.log('[Wallpaper] wallpaperUrl:', wallpaperUrl ? wallpaperUrl.substring(0, 50) : 'null');
     console.log('[Wallpaper] settings.wallpaperSource:', ctx.state.settings.wallpaperSource);
-    console.log('[Wallpaper] result.wallpaperData:', result.wallpaperData ? 'exists' : 'null');
-    console.log('[Wallpaper] result.currentBingWallpaper:', result.currentBingWallpaper ? 'exists' : 'null');
-    console.log('[Wallpaper] result.currentGoogleWallpaper:', result.currentGoogleWallpaper ? 'exists' : 'null');
 
     if (wallpaperUrl) {
         await displayWallpaper(ctx, wallpaperUrl);
         console.log('[Wallpaper] Set backgroundImage on body::before');
     } else {
         body.classList.remove('has-wallpaper');
-        console.log('[Wallpaper] No wallpaper in storage, will load async');
+        console.log('[Wallpaper] No wallpaper in IDB, will load async');
         await loadWallpaper(ctx);
     }
 

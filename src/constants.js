@@ -33,6 +33,11 @@ export const DEFAULT_SETTINGS = {
     currentSearchEngine: 'google',
     // When true, clicking a shortcut opens in a new tab (keeps the New Tab page).
     openShortcutInNewTab: false,
+
+    // WebDAV Sync
+    webdavUrl: '',
+    webdavUsername: '',
+    webdavPassword: '',
 };
 
 export const DEFAULT_SEARCH_ENGINES = {

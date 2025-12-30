@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>New Tab</title>
     <link rel="stylesheet" href="src/style.css">
 </head>
+
 <body id="body" style="--mask-opacity: 0.45; --wallpaper-blur: 0;">
     <!-- 壁纸换新按钮 -->
     <button class="wallpaper-refresh-btn" id="wallpaper-refresh-btn" title="Refresh wallpaper">🔄</button>
@@ -28,9 +30,11 @@
             <div class="search-box">
                 <div class="search-engine-selector">
                     <div class="search-engine-icon" id="search-engine-icon">
-                        <svg class="icon-svg" viewBox="1 1 22 22" xmlns="http://www.w3.org/2000/svg" style="overflow: visible;">
-                            <circle cx="12" cy="12" r="11" fill="#4285F4"/>
-                            <text x="12" y="12" text-anchor="middle" dominant-baseline="central" font-size="14" font-weight="bold" font-family="Arial, sans-serif" fill="white">G</text>
+                        <svg class="icon-svg" viewBox="1 1 22 22" xmlns="http://www.w3.org/2000/svg"
+                            style="overflow: visible;">
+                            <circle cx="12" cy="12" r="11" fill="#4285F4" />
+                            <text x="12" y="12" text-anchor="middle" dominant-baseline="central" font-size="14"
+                                font-weight="bold" font-family="Arial, sans-serif" fill="white">G</text>
                         </svg>
                     </div>
                     <div class="search-engine-dropdown-toggle"></div>
@@ -42,24 +46,27 @@
                 <div class="dropdown-options">
                     <div class="dropdown-option" data-engine="google">
                         <svg class="dropdown-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <circle cx="12" cy="12" r="11" fill="#4285F4"/>
-                            <text x="12" y="16" text-anchor="middle" font-size="14" font-weight="bold" font-family="Arial" fill="white">G</text>
+                            <circle cx="12" cy="12" r="11" fill="#4285F4" />
+                            <text x="12" y="16" text-anchor="middle" font-size="14" font-weight="bold"
+                                font-family="Arial" fill="white">G</text>
                         </svg>
                         <span>Google</span>
                         <button class="delete-engine-btn" title="Delete" style="display:none;">×</button>
                     </div>
                     <div class="dropdown-option" data-engine="bing">
                         <svg class="dropdown-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <circle cx="12" cy="12" r="11" fill="#00A4EF"/>
-                            <text x="12" y="16" text-anchor="middle" font-size="14" font-weight="bold" font-family="Arial" fill="white">B</text>
+                            <circle cx="12" cy="12" r="11" fill="#00A4EF" />
+                            <text x="12" y="16" text-anchor="middle" font-size="14" font-weight="bold"
+                                font-family="Arial" fill="white">B</text>
                         </svg>
                         <span>Bing</span>
                         <button class="delete-engine-btn" title="Delete" style="display:none;">×</button>
                     </div>
                     <div class="dropdown-option" data-engine="baidu">
                         <svg class="dropdown-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <circle cx="12" cy="12" r="11" fill="#FF6B2B"/>
-                            <text x="12" y="16" text-anchor="middle" font-size="14" font-weight="bold" font-family="Arial" fill="white">百</text>
+                            <circle cx="12" cy="12" r="11" fill="#FF6B2B" />
+                            <text x="12" y="16" text-anchor="middle" font-size="14" font-weight="bold"
+                                font-family="Arial" fill="white">百</text>
                         </svg>
                         <span>Baidu</span>
                         <button class="delete-engine-btn" title="Delete" style="display:none;">×</button>
@@ -109,7 +116,9 @@
                         <label data-i18n="url">URL</label>
                         <div style="display: flex; gap: 8px;">
                             <input type="url" id="app-url" placeholder="https://example.com" required style="flex: 1;">
-                            <button type="button" id="parse-url-btn" class="btn-primary" style="flex: 0 0 auto; width: auto; padding: 8px 16px;" data-i18n="parse_url">Parse</button>
+                            <button type="button" id="parse-url-btn" class="btn-primary"
+                                style="flex: 0 0 auto; width: auto; padding: 8px 16px;"
+                                data-i18n="parse_url">Parse</button>
                         </div>
                     </div>
 
@@ -117,10 +126,12 @@
                         <label data-i18n="icon_type">Icon Type</label>
                         <div class="icon-options">
                             <label>
-                                <input type="radio" name="icon-type" value="text" checked> <span data-i18n="text">Text</span>
+                                <input type="radio" name="icon-type" value="text" checked> <span
+                                    data-i18n="text">Text</span>
                             </label>
                             <label>
-                                <input type="radio" name="icon-type" value="upload"> <span data-i18n="image">Image</span>
+                                <input type="radio" name="icon-type" value="upload"> <span
+                                    data-i18n="image">Image</span>
                             </label>
                         </div>
                     </div>
@@ -164,7 +175,8 @@
                         </select>
                     </div>
                     <div class="setting-item">
-                        <button type="button" id="wallpaper-upload-btn" class="btn-primary" data-i18n="upload">Upload</button>
+                        <button type="button" id="wallpaper-upload-btn" class="btn-primary"
+                            data-i18n="upload">Upload</button>
                         <input type="file" id="wallpaper-file" accept="image/*" style="display:none;">
                     </div>
                     <div class="setting-item">
@@ -189,7 +201,8 @@
                             <button type="button" class="grid-preset" data-cols="6">2x6</button>
                             <button type="button" class="grid-preset" data-cols="7">2x7</button>
                             <button type="button" class="grid-preset" data-cols="3">3x3</button>
-                            <button type="button" class="grid-preset" data-cols="custom" data-i18n="custom">Custom</button>
+                            <button type="button" class="grid-preset" data-cols="custom"
+                                data-i18n="custom">Custom</button>
                         </div>
                     </div>
                     <div class="setting-item hidden" id="custom-cols-item">
@@ -293,16 +306,56 @@
                     <div class="setting-item">
                         <label data-i18n="text_color">Font Color</label>
                         <div class="color-palette">
-                            <button type="button" class="color-btn" data-color="#999999" style="background-color: #999999;"></button>
-                            <button type="button" class="color-btn" data-color="#ef5350" style="background-color: #ef5350;"></button>
-                            <button type="button" class="color-btn" data-color="#ffa726" style="background-color: #ffa726;"></button>
-                            <button type="button" class="color-btn" data-color="#ffee58" style="background-color: #ffee58;"></button>
-                            <button type="button" class="color-btn" data-color="#66bb6a" style="background-color: #66bb6a;"></button>
-                            <button type="button" class="color-btn" data-color="#29b6f6" style="background-color: #29b6f6;"></button>
-                            <button type="button" class="color-btn" data-color="#5c6bc0" style="background-color: #5c6bc0;"></button>
-                            <button type="button" class="color-btn" data-color="#ab47bc" style="background-color: #ab47bc;"></button>
-                            <button type="button" class="color-btn" data-color="#ffffff" style="background-color: #ffffff; border: 1px solid #ccc;"></button>
+                            <button type="button" class="color-btn" data-color="#999999"
+                                style="background-color: #999999;"></button>
+                            <button type="button" class="color-btn" data-color="#ef5350"
+                                style="background-color: #ef5350;"></button>
+                            <button type="button" class="color-btn" data-color="#ffa726"
+                                style="background-color: #ffa726;"></button>
+                            <button type="button" class="color-btn" data-color="#ffee58"
+                                style="background-color: #ffee58;"></button>
+                            <button type="button" class="color-btn" data-color="#66bb6a"
+                                style="background-color: #66bb6a;"></button>
+                            <button type="button" class="color-btn" data-color="#29b6f6"
+                                style="background-color: #29b6f6;"></button>
+                            <button type="button" class="color-btn" data-color="#5c6bc0"
+                                style="background-color: #5c6bc0;"></button>
+                            <button type="button" class="color-btn" data-color="#ab47bc"
+                                style="background-color: #ab47bc;"></button>
+                            <button type="button" class="color-btn" data-color="#ffffff"
+                                style="background-color: #ffffff; border: 1px solid #ccc;"></button>
                         </div>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h4 data-i18n="data_sync">Data Sync (WebDAV)</h4>
+                    <div class="setting-item">
+                        <label data-i18n="server_url">Server URL</label>
+                        <input type="text" id="webdav-url" placeholder="https://example.com/dav">
+                    </div>
+                    <div class="setting-item">
+                        <label data-i18n="username">Username</label>
+                        <input type="text" id="webdav-username" placeholder="Username">
+                    </div>
+                    <div class="setting-item">
+                        <label data-i18n="password">Password</label>
+                        <input type="password" id="webdav-password" placeholder="Password">
+                    </div>
+                    <div class="setting-item">
+                        <button type="button" id="webdav-check-btn" class="btn-secondary"
+                            data-i18n="check_connection">Check Connection</button>
+                    </div>
+                    <div class="setting-item" style="gap: 8px; flex-wrap: wrap;">
+                        <button type="button" id="sync-upload-btn" class="btn-primary"
+                            title="Local -> Remote (Overwrite)" data-i18n="upload_sync">Upload</button>
+                        <button type="button" id="sync-download-btn" class="btn-primary"
+                            title="Remote -> Local (Overwrite)" data-i18n="download_sync">Download</button>
+                        <button type="button" id="sync-merge-btn" class="btn-primary" title="Merge"
+                            data-i18n="merge_sync">Merge</button>
+                    </div>
+                    <div class="setting-item">
+                        <span id="sync-status" style="font-size: 12px; color: #666; width: 100%;"></span>
                     </div>
                 </div>
 
@@ -322,4 +375,5 @@
     <script src="i18n.js"></script>
     <script type="module" src="script.js"></script>
 </body>
+
 </html>
