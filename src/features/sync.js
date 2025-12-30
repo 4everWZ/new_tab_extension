@@ -46,6 +46,7 @@ export async function syncUpload(ctx) {
 
     // App Icons
     for (const app of ctx.state.allApps) {
+        if (!app) continue;
         if (app.img && app.img.startsWith('idb://favicons/')) {
             const id = app.img.split('/').pop();
             const iconData = await db.get(STORES_CONSTANTS.FAVICONS, id);
