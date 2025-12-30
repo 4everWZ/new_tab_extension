@@ -52,6 +52,18 @@ UI glue:
 3. Click **Load unpacked**
 4. Select this folder
 
+### WebDAV Sync Usage
+
+The extension supports syncing settings and assets (wallpapers, shortcut icons) via WebDAV.
+
+1. Open **Settings** -> **Data Sync (WebDAV)**.
+2. Enter your WebDAV Server URL, Username, and Password.
+3. Click **Check Connection** to verify.
+4. Use the buttons to sync:
+   - **Upload**: Overwrites remote data with your local data.
+   - **Download**: Overwrites local data with remote data.
+   - **Merge**: Downloads remote data and merges it with local data (Remote settings overwrite local; Shortcuts are combined by URL).
+
 ### Testing
 See `TESTING.md`.
 
