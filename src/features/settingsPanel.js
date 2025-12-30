@@ -181,8 +181,11 @@ export function setupSettingsPanel(ctx) {
                 blobToSave = dataURLToBlob(compressed);
             }
 
-            // Save Blob to IDB
-            await db.set(STORES_CONSTANTS.WALLPAPERS, 'local', blobToSave);
+            // Revert: Save as Data URL String to IDB (No Blob)
+            const resultDataUrl = blobToSave instanceof Blob ? await blobToDataUrl(blobToSave) : blobToSave;
+
+            // Save Data URL to IDB
+            await db.set(STORES_CONSTANTS.WALLPAPERS, 'local', resultDataUrl);
 
             // Update Settings
             settings.wallpaperSource = 'local';
@@ -192,9 +195,7 @@ export function setupSettingsPanel(ctx) {
             await ctx.actions.saveSettings();
 
             // Display
-            const objectUrl = URL.createObjectURL(blobToSave);
-            displayWallpaper(ctx, objectUrl);
-            // Note: objectURL needs to be revoked eventually, but for single wallpaper it's okay? 
+            displayWallpaper(ctx, resultDataUrl);
             // Ideally displayWallpaper handles specific URL types.
 
             // Clear input

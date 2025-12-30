@@ -303,10 +303,12 @@ body::after {
     display: flex;
     justify-content: flex-start;
     overflow: hidden;
-    /* Fixed height for stable layout with padding for icon hover scale and name text */
+    /* Fixed height for stable layout */
     height: calc((var(--icon-size, 90px) + 50px + 32px) * var(--grid-rows, 2));
     padding: 20px 0;
+    /* Ensure padding-left centers content based on columns */
     padding-left: calc((100% - var(--grid-cols, 5) * (var(--icon-size, 90px) + 50px) + 50px) / 2);
+    /* Pagination space reserved outside or by parent min-height */
 }
 
 .grid-wrapper::before,

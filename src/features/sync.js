@@ -96,10 +96,25 @@ export async function syncUpload(ctx, force = false) {
     // 3. Identify binaries
     const blobsToUpload = [];
 
+    // Wallpaper logic merged into combined block above to use dataURLToBlob
+
+    // Icons
+    // Import helper
+    const { dataURLToBlob } = await import('../utils/images.js');
+
+    const ensureBlob = (data) => {
+        if (typeof data === 'string' && data.startsWith('data:')) {
+            return dataURLToBlob(data);
+        }
+        return data;
+    };
+
     // Wallpaper
     if (ctx.state.settings.wallpaperSource === 'local') {
-        const wpData = await db.get(STORES_CONSTANTS.WALLPAPERS, 'local');
+        let wpData = await db.get(STORES_CONSTANTS.WALLPAPERS, 'local');
         if (wpData) {
+            wpData = ensureBlob(wpData); // Convert Data URL String -> Blob
+
             const type = wpData.type || 'image/jpeg';
             const ext = type.split('/')[1] || 'bin';
             blobsToUpload.push({
@@ -107,31 +122,18 @@ export async function syncUpload(ctx, force = false) {
                 data: wpData,
                 type: type
             });
-            // Annotate payload with ref? V1 used implicit name. V2 can implicit too.
         }
     }
 
     // Icons
     for (const app of appsToUpload) {
         if (app.img && app.img.startsWith('idb://favicons/')) {
-            const hash = app.img.split('/').pop(); // This is the SHA-256 hash now
-            const iconData = await db.get(STORES_CONSTANTS.FAVICONS, hash);
+            const hash = app.img.split('/').pop();
+            let iconData = await db.get(STORES_CONSTANTS.FAVICONS, hash);
             if (iconData) {
+                iconData = ensureBlob(iconData); // Convert Data URL String -> Blob
+
                 const ext = iconData.type ? iconData.type.split('/')[1] : 'png';
-                // Filename: favicons/<hash>.bin (or .ext)
-                // Use a folder? Jianguoyun supports folders but we need to create it?
-                // For simplicity, flat root files with prefix: 'favicon_<hash>.bin'
-                // User suggested 'favicons/<hash>.png'.
-                // Ideally we check if folder exists, but let's stick to flat 'favicon_HASH.ext' for max compat for now unless folder CREATE is safe.
-                // Or try to create folder once.
-
-                // Let's use 'favicon_<hash>.<ext>' in root for now to avoid MkCol complexity
-                // unless we want to implement it.
-                // User requirement: "favicons/<iconKey>.png"
-                // Let's try root prefix `favicon_HASH.ext` as it avoids folders.
-                // Wait, user explicitly asked for "favicons/<iconKey>.png".
-                // I'll stick to flat 'favicon_<hash>.<ext>' to be safe on WebDAV implementations without MkCol support in my client.
-
                 blobsToUpload.push({
                     name: `favicon_${hash}.${ext}`,
                     data: iconData,
@@ -253,7 +255,13 @@ export async function syncDownload(ctx, mode = 'overwrite') { // mode: 'overwrit
         if (item.store === 'favicon') {
             // Check local IDB first
             const exists = await db.get(STORES_CONSTANTS.FAVICONS, item.key);
-            if (exists) continue; // Skip download!
+            // If exists is string "[object Blob]", we must kill it and re-download!
+            if (typeof exists === 'string' && exists.includes('[object Blob]')) {
+                await db.delete(STORES_CONSTANTS.FAVICONS, item.key);
+                // proceed to download
+            } else if (exists) {
+                continue; // Skip download!
+            }
         }
         // Wallpaper always re-download? Hash check would be nice but wallpaper key is 'local' (fixed).
         // So wallpaper always download.
@@ -297,7 +305,31 @@ export async function syncDownload(ctx, mode = 'overwrite') { // mode: 'overwrit
             }
 
             if (content) {
+                // Critical Guard: V2 Sync Fix
+                let isCorrupt = false;
+                if (typeof content === 'string' && content.includes('[object Blob]')) {
+                    isCorrupt = true;
+                } else if (content instanceof Blob && content.size < 50) {
+                    // Check if blob content is literally "[object Blob]"
+                    const text = await content.text();
+                    if (text.includes('[object Blob]')) {
+                        isCorrupt = true;
+                    }
+                }
+
+                if (isCorrupt) {
+                    console.error(`[Sync] Downloaded CORRUPT data for ${item.key}. Discarding.`);
+                    // Do not save. Treat as failed.
+                    break;
+                }
+
                 if (item.store === 'wallpaper') {
+                    // Revert to Data URL logic:
+                    // If content is Blob, convert to Data URL String before saving
+                    if (content instanceof Blob) {
+                        const { blobToDataUrl } = await import('../utils/images.js');
+                        content = await blobToDataUrl(content);
+                    }
                     await db.set(STORES_CONSTANTS.WALLPAPERS, item.key, content);
                 } else {
                     await db.set(STORES_CONSTANTS.FAVICONS, item.key, content);

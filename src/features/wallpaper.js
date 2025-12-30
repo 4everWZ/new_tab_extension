@@ -9,9 +9,23 @@ export async function getWallpaperUrl(ctx) {
     if (settings.wallpaperSource === 'local') {
         const data = await db.get(STORES_CONSTANTS.WALLPAPERS, 'local');
         if (data) {
-            console.log('[getWallpaperUrl] ✓ Returning local wallpaper from IDB');
-            if (data instanceof Blob) {
-                return URL.createObjectURL(data);
+            // Revert: Prefer Base64 String (Data URL) over Blob
+            if (data instanceof Blob || (data && data.constructor && data.constructor.name === 'Blob')) {
+                // If we found a Blob (from V2 migration), convert it to Base64 String and SAVE IT back!
+                // This migrates user back to "safe" mode.
+                try {
+                    const { blobToDataUrl } = await import('../utils/images.js');
+                    const dataUrl = await blobToDataUrl(data);
+                    await db.set(STORES_CONSTANTS.WALLPAPERS, 'local', dataUrl);
+                    return dataUrl;
+                } catch (e) {
+                    console.error('Failed to migrate Blob to DataURL', e);
+                    return URL.createObjectURL(data); // Fallback
+                }
+            } else if (typeof data === 'string') {
+                // Already a string (Data URL) - Perfect.
+                if (data.includes('[object Blob]')) return null; // Corrupt guard
+                return data;
             }
             return data;
         }
@@ -69,9 +83,10 @@ export async function loadWallpaper(ctx) {
 
     if (settings.wallpaperSource === 'local') {
         console.log('[Wallpaper] Loading local wallpaper...');
-        const data = await db.get(STORES_CONSTANTS.WALLPAPERS, 'local');
-        if (data) {
-            await displayWallpaper(ctx, data, 'wallpaperData');
+        // Use getWallpaperUrl to handle Blob -> ObjectURL conversion!
+        const url = await getWallpaperUrl(ctx);
+        if (url) {
+            await displayWallpaper(ctx, url, 'wallpaperData');
             console.log('[Wallpaper] Local wallpaper loaded from IDB');
         } else {
             console.log('[Wallpaper] No local wallpaper found in IDB');

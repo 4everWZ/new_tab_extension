@@ -72,7 +72,7 @@ export async function fetchImageBlob(url) {
     }
 }
 
-function blobToDataUrl(blob) {
+export function blobToDataUrl(blob) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result);

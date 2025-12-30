@@ -7,35 +7,40 @@ This Chrome extension overrides the New Tab page and provides:
 - Settings sidebar (persisted via `chrome.storage.local`)
 
 ## Project layout
-
-Top-level files:
-- `newtab.html`: New Tab UI markup. Loads scripts in this order:
-  1) `i18n.js` (global i18n compatibility)
-  2) `script.js` (`type="module"` entry)
-- `script.js`: Thin entry that imports `src/app.js`
-- `i18n.js`: IIFE-style script that still exports compatibility globals (`t`, `setLanguage`, `currentLanguage`)
-- `src/style.css`: Styling + app-ready gating to prevent FOUC
-
-Module code (ES Modules) lives under `src/`:
-- `src/app.js`: App bootstrap; builds `ctx`, loads storage, applies settings, initializes features
-- `src/state.js`: Central state model and helpers
-- `src/dom.js`: DOM element lookup + DOM-related helpers
-- `src/constants.js`: Shared constants
-
-Features (UI behavior by area):
-- `src/features/search.js`: Search engine + submit behavior
-- `src/features/settingsPanel.js`: Settings sidebar UI + persistence
-- `src/features/shortcuts.js`: Shortcuts grid, edit mode, icon editor, DnD, pagination
-- `src/features/sidebar.js`: Sidebar toggling + layout wiring
-- `src/features/wallpaper.js`: Wallpaper source handling + refresh
-
-Utilities:
-- `src/utils/storage.js`: Promise wrappers for `chrome.storage.*`
-- `src/utils/images.js`: Image helpers (e.g., convert to data URL, transparency check)
-- `src/utils/favicon.js`: Favicon helpers
-
-UI glue:
-- `src/ui/settingsApply.js`: Apply persisted settings to CSS vars / DOM
+ 
+ Top-level files:
+ - `newtab.html`: New Tab UI markup. Loads scripts in this order:
+   1) `i18n.js` (global i18n compatibility)
+   2) `script.js` (`type="module"` entry)
+ - `script.js`: Thin entry that imports `src/app.js`
+ - `i18n.js`: IIFE-style script that still exports compatibility globals (`t`, `setLanguage`, `currentLanguage`)
+ - `src/style.css`: Styling + app-ready gating to prevent FOUC
+ - `manifest.json`: Extension configuration
+ 
+ Module code (ES Modules) lives under `src/`:
+ - `src/app.js`: App bootstrap; builds `ctx`, loads storage, applies settings, initializes features
+ - `src/background.js`: Service Worker for WebDAV proxying (CORS bypass) and logic
+ - `src/state.js`: Central state model and helpers
+ - `src/dom.js`: DOM element lookup + DOM-related helpers
+ - `src/constants.js`: Shared constants
+ 
+ Features (UI behavior by area):
+ - `src/features/search.js`: Search engine + submit behavior
+ - `src/features/settingsPanel.js`: Settings sidebar UI + persistence
+ - `src/features/shortcuts.js`: Shortcuts grid, edit mode, icon editor, DnD, pagination
+ - `src/features/sidebar.js`: Sidebar toggling + layout wiring
+ - `src/features/wallpaper.js`: Wallpaper source handling + refresh
+ - `src/features/sync.js`: WebDAV synchronization logic (V2 with binary support)
+ 
+ Utilities:
+ - `src/utils/storage.js`: Promise wrappers for `chrome.storage.*`
+ - `src/utils/db.js`: IndexedDB wrapper for large asset storage (Wallpapers/Icons)
+ - `src/utils/images.js`: Image formatting, compression, and analysis helpers
+ - `src/utils/favicon.js`: Favicon URL generators
+ - `src/utils/webdav.js`: WebDAV Client implementation
+ 
+ UI glue:
+ - `src/ui/settingsApply.js`: Apply persisted settings to CSS vars / DOM
 
 ## Key design decisions
 
@@ -71,3 +76,14 @@ See `TESTING.md`.
 
 - This repo uses ES Modules in the New Tab page context.
 - Persisted data is stored in `chrome.storage.local`.
+- Binary assets (Wallpapers/Icons) are stored in IndexedDB.
+
+## Support
+
+If you like this extension, you can buy me a coffee! 
+
+| WeChat Pay | WeChat |
+| :---: | :---: |
+| <img src="images/WeChat_1.jpg" width="200"> | <img src="images/WeChat.png" width="200"> |
+
+Feel free to sponsor and connect with me!

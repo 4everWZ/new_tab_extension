@@ -16,7 +16,13 @@ export class WebDAVClient {
         let isPayloadBinary = false;
 
         if (body) {
-            if (body instanceof Blob || body instanceof File) {
+            // Robust check for Blob/File (instanceof can fail across contexts)
+            const isBlob = body instanceof Blob ||
+                (body && body.constructor && (body.constructor.name === 'Blob' || body.constructor.name === 'File')) ||
+                Object.prototype.toString.call(body) === '[object Blob]' ||
+                Object.prototype.toString.call(body) === '[object File]';
+
+            if (isBlob) {
                 // Convert Blob/File to Data URL for message passing
                 payloadBody = await new Promise((resolve, reject) => {
                     const reader = new FileReader();

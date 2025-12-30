@@ -20,10 +20,41 @@ export function setPage(ctx, pageIndex, options = {}) {
     if (pageIndex < 0) pageIndex = 0;
     if (pageIndex >= totalPages) pageIndex = totalPages - 1;
 
-    ctx.state.currentPage = pageIndex;
+    const grid = ctx.dom.grid;
+    if (options.animate && grid) {
+        // Android-style swipe: Move fully out, then swap, then move back in. No fade during move.
+        const dist = '50vw'; // Use viewport width for better feel
 
-    renderGrid(ctx);
-    renderPagination(ctx);
+        grid.style.transition = 'transform 0.2s cubic-bezier(0.2, 0.0, 0.2, 1)';
+        grid.style.transform = options.direction === 'next' ? `translateX(-${dist})` : `translateX(${dist})`;
+        // reduce opacity only slightly at the very end to soften the edge? User said NO fade.
+        // So we keep opacity 1 during move.
+
+        setTimeout(() => {
+            // instant swap phase
+            grid.style.transition = 'none';
+            grid.style.opacity = '0'; // Hide briefly for content swap/position reset
+
+            ctx.state.currentPage = pageIndex;
+            renderGrid(ctx);
+            renderPagination(ctx);
+
+            // Reset position for slide-in (other side)
+            grid.style.transform = options.direction === 'next' ? `translateX(${dist})` : `translateX(-${dist})`;
+
+            // Force reflow
+            void grid.offsetWidth;
+
+            // Slide in
+            grid.style.opacity = '1';
+            grid.style.transition = 'transform 0.2s cubic-bezier(0.2, 0.0, 0.2, 1)';
+            grid.style.transform = 'translateX(0)';
+        }, 200);
+    } else {
+        ctx.state.currentPage = pageIndex;
+        renderGrid(ctx);
+        renderPagination(ctx);
+    }
 }
 
 export function renderPagination(ctx) {
@@ -35,12 +66,16 @@ export function renderPagination(ctx) {
 
     pagination.innerHTML = '';
 
+    // Always keep display flex to preserve height/margin
+    pagination.style.display = 'flex';
+
     if (totalPages <= 1) {
-        pagination.style.display = 'none';
+        // Use visibility hidden to keep the space occupied
+        pagination.style.visibility = 'hidden';
         return;
     }
 
-    pagination.style.display = 'flex';
+    pagination.style.visibility = 'visible';
 
     for (let i = 0; i < totalPages; i++) {
         const dot = document.createElement('span');
@@ -445,6 +480,11 @@ export async function addNewShortcut(ctx) {
                     await db.set(STORES_CONSTANTS.FAVICONS, id, blob);
                     newApp.img = `idb://favicons/${id}`;
                     finalUrl = cachedUrl;
+                } else if (typeof cachedUrl === 'string' && cachedUrl.includes('[object Blob]')) {
+                    // Corrupt detection
+                    console.error('[Shortcuts] Corrupt favicon data detected:', cachedUrl);
+                    newApp.img = null; // or fallback?
+                    finalUrl = null; // Indicate that no valid image was found
                 } else {
                     newApp.img = cachedUrl || faviconUrl;
                     finalUrl = newApp.img;
@@ -721,12 +761,74 @@ export function editAppIcon(ctx, index) {
     if (currentIconType === 'icon' && app.img) {
         const isSelected = currentIconType === 'icon';
         const bgColor = app.isTransparent ? 'transparent' : '#f0f0f0';
+
+        let displayUrl = app.img;
+        if (app.img.startsWith('idb://')) {
+            // We can't use idb:// in DOM directly.
+            // Best effort: try to get blob? Or rely on what applyImageIcon did (it sets innerHTML but here we need a URL string).
+            // Since edit mode is transient, we can fetch the blobsync? No, async.
+            // We'll set a placeholder and update it after. 
+            displayUrl = '';
+        }
+
+        const iconOption = document.createElement('div');
+        iconOption.className = 'icon-option';
+        iconOption.dataset.type = 'icon';
+        iconOption.dataset.style = 'icon1';
+        iconOption.dataset.url = app.img; // Keep IDB ref for logic
+        iconOption.style.cssText = `padding: 12px; border: 2px solid ${isSelected ? '#4285F4' : '#ddd'}; border-radius: 8px; text-align: center; cursor: pointer; background: ${isSelected ? '#f0f7ff' : '#fff'};`;
+
+        const previewDiv = document.createElement('div');
+        previewDiv.style.cssText = `width: 60px; height: 60px; aspect-ratio: 1; border-radius: ${ctx.state.settings.iconRadius || 50}%; background-color: ${bgColor}; background-size: cover; background-position: center; margin: 0 auto 8px; border: 1px solid #eee;`;
+
+        if (app.img.startsWith('idb://')) {
+            const key = app.img.split('/').pop();
+            db.get(STORES_CONSTANTS.FAVICONS, key).then(blob => {
+                if (blob instanceof Blob) {
+                    previewDiv.style.backgroundImage = `url(${URL.createObjectURL(blob)})`;
+                }
+            });
+        } else {
+            previewDiv.style.backgroundImage = `url(${app.img})`;
+        }
+
+        iconOption.appendChild(previewDiv);
+        iconOption.innerHTML += `<div style="font-size: 12px; color: #666;">图标A</div>`;
+
+        // iconOptionsHTML += iconOption.outerHTML; // Fails to attach events/async style
+        // We must append to container later. 
+        // For now let's use the string approach but handle async separately? 
+        // Refactoring to DOM creation is safer.
+
+        // Let's stick to string but use a unique class to target it.
+        const headerId = 'icon-preview-' + Date.now();
         iconOptionsHTML += `
-            <div class="icon-option" data-type="icon" data-style="icon1" data-url="${app.img}" style="padding: 12px; border: 2px solid ${isSelected ? '#4285F4' : '#ddd'}; border-radius: 8px; text-align: center; cursor: pointer; background: ${isSelected ? '#f0f7ff' : '#fff'};">
-                <div style="width: 60px; height: 60px; aspect-ratio: 1; border-radius: ${ctx.state.settings.iconRadius || 50}%; background-image: url(${app.img}); background-color: ${bgColor}; background-size: cover; background-position: center; margin: 0 auto 8px; border: 1px solid #eee;"></div>
+            <div class="icon-option ${headerId}" data-type="icon" data-style="icon1" data-url="${app.img}" style="padding: 12px; border: 2px solid ${isSelected ? '#4285F4' : '#ddd'}; border-radius: 8px; text-align: center; cursor: pointer; background: ${isSelected ? '#f0f7ff' : '#fff'};">
+                <div class="preview-img" style="width: 60px; height: 60px; aspect-ratio: 1; border-radius: ${ctx.state.settings.iconRadius || 50}%; background-color: ${bgColor}; background-size: cover; background-position: center; margin: 0 auto 8px; border: 1px solid #eee;"></div>
                 <div style="font-size: 12px; color: #666;">图标A</div>
             </div>
         `;
+
+        // Async update
+        if (app.img.startsWith('idb://')) {
+            const key = app.img.split('/').pop();
+            db.get(STORES_CONSTANTS.FAVICONS, key).then(blob => {
+                const els = document.getElementsByClassName(headerId);
+                if (els.length > 0 && blob instanceof Blob) {
+                    const p = els[0].querySelector('.preview-img');
+                    if (p) p.style.backgroundImage = `url(${URL.createObjectURL(blob)})`;
+                }
+            });
+        } else {
+            // Inject directly for non-IDB
+            setTimeout(() => {
+                const els = document.getElementsByClassName(headerId);
+                if (els.length > 0) {
+                    const p = els[0].querySelector('.preview-img');
+                    if (p) p.style.backgroundImage = `url(${app.img})`;
+                }
+            }, 0);
+        }
         availableIconCount = 1;
     } else {
         const faviconUrls = getFaviconUrl(app.url);
@@ -1025,6 +1127,36 @@ function handleDragOver(ctx, e) {
     return false;
 }
 
+// Helper for edge auto-paging
+let lastPageSwitchTime = 0;
+const edgeThreshold = 100;
+
+function maybeAutoPageOnEdge(ctx, clientX) {
+    const now = Date.now();
+    if (now - lastPageSwitchTime > 500) { // Throttle page switches (500ms)
+        const { currentPage } = ctx.state;
+        const totalPages = getTotalPages(ctx);
+
+        if (clientX < edgeThreshold && currentPage > 0) {
+            // Previous page
+            const grid = document.querySelector('.grid-wrapper');
+            grid?.classList.add('edge-highlight-left');
+            setTimeout(() => grid?.classList.remove('edge-highlight-left'), 1000);
+
+            setPage(ctx, currentPage - 1, { animate: true, direction: 'prev' });
+            lastPageSwitchTime = now;
+        } else if (clientX > window.innerWidth - edgeThreshold && currentPage < totalPages - 1) {
+            // Next page
+            const grid = document.querySelector('.grid-wrapper');
+            grid?.classList.add('edge-highlight-right');
+            setTimeout(() => grid?.classList.remove('edge-highlight-right'), 1000);
+
+            setPage(ctx, currentPage + 1, { animate: true, direction: 'next' });
+            lastPageSwitchTime = now;
+        }
+    }
+}
+
 function handleDragLeave(ctx, e) {
     e.currentTarget.classList.remove('drag-over');
 }
@@ -1114,10 +1246,4 @@ function handleDragEnd(ctx, e) {
 
     ctx.state.draggedItem = null;
     ctx.state.draggedIndex = null;
-
-    if (edgePageTimer) {
-        clearTimeout(edgePageTimer);
-        edgePageTimer = null;
-    }
-    showEdgeHighlight(null);
 }

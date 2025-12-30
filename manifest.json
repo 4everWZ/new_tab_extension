@@ -23,7 +23,7 @@
     "https://*/*"
   ],
   "icons": {
-    "128": "icon.png"
+    "128": "images/icon.png"
   },
   "declarative_net_request": {
     "rule_resources": [
