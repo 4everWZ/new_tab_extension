@@ -46,7 +46,10 @@ export class WebDAVClient {
     async upload(filename, data) {
         try {
             const response = await this._request('PUT', filename, data);
-            return response.status >= 200 && response.status < 300;
+            if (response.status >= 300) {
+                throw new Error(`HTTP ${response.status} ${response.statusText} for ${this.url + filename}`);
+            }
+            return true;
         } catch (e) {
             console.error('[WebDAV] Upload failed:', e);
             throw e;
