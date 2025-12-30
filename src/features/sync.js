@@ -26,7 +26,7 @@ export async function syncUpload(ctx) {
     // 1. Prepare JSON Payload
     const data = {
         settings: ctx.state.settings,
-        apps: ctx.state.allApps,
+        apps: ctx.state.allApps.filter(app => app !== null),
         timestamp: Date.now()
     };
 
@@ -102,6 +102,7 @@ export async function syncDownload(ctx, mode = 'overwrite') { // mode: 'overwrit
     // Icons
     if (Array.isArray(remoteData.apps)) {
         for (const app of remoteData.apps) {
+            if (!app) continue;
             if (app.img && app.img.startsWith('idb://favicons/')) {
                 const id = app.img.split('/').pop();
                 neededBinaries.push(`favicon_${id}`);
