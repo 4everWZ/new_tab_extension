@@ -15,6 +15,9 @@ function getTotalPages(ctx) {
     return Math.max(1, totalPages);
 }
 
+// Animation duration constant (in ms) - used for consistency across page transitions
+const ANIMATION_DURATION = 300;
+
 export function setPage(ctx, pageIndex, options = {}) {
     const totalPages = getTotalPages(ctx);
     if (pageIndex < 0) pageIndex = 0;
@@ -22,34 +25,41 @@ export function setPage(ctx, pageIndex, options = {}) {
 
     const grid = ctx.dom.grid;
     if (options.animate && grid) {
-        // Android-style swipe: Move fully out, then swap, then move back in. No fade during move.
-        const dist = '50vw'; // Use viewport width for better feel
+        // Prevent overlapping animations
+        if (grid._animating) return;
+        grid._animating = true;
 
-        grid.style.transition = 'transform 0.2s cubic-bezier(0.2, 0.0, 0.2, 1)';
-        grid.style.transform = options.direction === 'next' ? `translateX(-${dist})` : `translateX(${dist})`;
-        // reduce opacity only slightly at the very end to soften the edge? User said NO fade.
-        // So we keep opacity 1 during move.
+        // Step 1: Instantly swap content and position off-screen (no animation)
+        grid.style.transition = 'none';
+        grid.style.willChange = 'transform';
 
-        setTimeout(() => {
-            // instant swap phase
-            grid.style.transition = 'none';
-            grid.style.opacity = '0'; // Hide briefly for content swap/position reset
+        // Update page and render new content
+        ctx.state.currentPage = pageIndex;
+        renderGrid(ctx);
+        renderPagination(ctx);
 
-            ctx.state.currentPage = pageIndex;
-            renderGrid(ctx);
-            renderPagination(ctx);
+        // Position content off-screen on the incoming side
+        const startPosition = options.direction === 'next' ? '100%' : '-100%';
+        grid.style.transform = `translateX(${startPosition})`;
 
-            // Reset position for slide-in (other side)
-            grid.style.transform = options.direction === 'next' ? `translateX(${dist})` : `translateX(-${dist})`;
+        // Force reflow to apply instant changes
+        void grid.offsetWidth;
 
-            // Force reflow
-            void grid.offsetWidth;
+        // Step 2: Single smooth slide-in animation
+        grid.style.transition = `transform ${ANIMATION_DURATION}ms cubic-bezier(0.4, 0.0, 0.2, 1)`;
+        grid.style.transform = 'translateX(0)';
 
-            // Slide in
-            grid.style.opacity = '1';
-            grid.style.transition = 'transform 0.2s cubic-bezier(0.2, 0.0, 0.2, 1)';
-            grid.style.transform = 'translateX(0)';
-        }, 200);
+        const onAnimationEnd = (e) => {
+            if (e.propertyName !== 'transform') return;
+            grid.removeEventListener('transitionend', onAnimationEnd);
+
+            // Clean up all animation styles
+            grid.style.willChange = '';
+            grid.style.transition = '';
+            grid.style.transform = '';
+            grid._animating = false;
+        };
+        grid.addEventListener('transitionend', onAnimationEnd);
     } else {
         ctx.state.currentPage = pageIndex;
         renderGrid(ctx);
@@ -536,25 +546,19 @@ export function renderGrid(ctx) {
     if (isEditMode) {
         // Clean up old listener if exists
         if (ctx._gridDragOverAttached && ctx._globalDragOver) {
-            const gridWrapper = document.querySelector('.grid-wrapper');
-            if (gridWrapper) {
-                gridWrapper.removeEventListener('dragover', ctx._globalDragOver);
-            }
+            document.removeEventListener('dragover', ctx._globalDragOver);
         }
 
-        // Add new listener
-        const gridWrapper = document.querySelector('.grid-wrapper');
-        if (gridWrapper) {
-            const globalDragOver = (e) => {
-                if (ctx.state.isEditMode && ctx.state.draggedIndex != null) {
-                    e.preventDefault();
-                    maybeAutoPageOnEdge(ctx, e.clientX);
-                }
-            };
-            gridWrapper.addEventListener('dragover', globalDragOver);
-            ctx._gridDragOverAttached = true;
-            ctx._globalDragOver = globalDragOver;
-        }
+        // Add new listener on document to catch edge drags even outside grid-wrapper
+        const globalDragOver = (e) => {
+            if (ctx.state.isEditMode && ctx.state.draggedIndex != null) {
+                e.preventDefault();
+                maybeAutoPageOnEdge(ctx, e.clientX);
+            }
+        };
+        document.addEventListener('dragover', globalDragOver);
+        ctx._gridDragOverAttached = true;
+        ctx._globalDragOver = globalDragOver;
     }
 
     const start = currentPage * pageSize;
@@ -703,10 +707,7 @@ export function exitEditMode(ctx) {
 
     // Clean up dragover listener
     if (ctx._gridDragOverAttached && ctx._globalDragOver) {
-        const gridWrapper = document.querySelector('.grid-wrapper');
-        if (gridWrapper) {
-            gridWrapper.removeEventListener('dragover', ctx._globalDragOver);
-        }
+        document.removeEventListener('dragover', ctx._globalDragOver);
         ctx._gridDragOverAttached = false;
         ctx._globalDragOver = null;
     }
@@ -1127,33 +1128,68 @@ function handleDragOver(ctx, e) {
     return false;
 }
 
-// Helper for edge auto-paging
-let lastPageSwitchTime = 0;
-const edgeThreshold = 100;
+// Helper for edge auto-paging with hover delay
+let edgeHoverStartTime = null;
+let lastEdgeSide = null; // 'left' | 'right' | null
+const edgeThreshold = 80; // Match CSS highlight width
+const hoverDelay = 500; // Time to hover before triggering page switch
 
 function maybeAutoPageOnEdge(ctx, clientX) {
     const now = Date.now();
-    if (now - lastPageSwitchTime > 500) { // Throttle page switches (500ms)
-        const { currentPage } = ctx.state;
-        const totalPages = getTotalPages(ctx);
+    const { currentPage } = ctx.state;
+    const totalPages = getTotalPages(ctx);
+    const gridWrapper = document.querySelector('.grid-wrapper');
+    const grid = ctx.dom.grid;
 
-        if (clientX < edgeThreshold && currentPage > 0) {
-            // Previous page
-            const grid = document.querySelector('.grid-wrapper');
-            grid?.classList.add('edge-highlight-left');
-            setTimeout(() => grid?.classList.remove('edge-highlight-left'), 1000);
+    if (!gridWrapper) return;
 
+    // Use grid-wrapper's actual bounds instead of viewport
+    const rect = gridWrapper.getBoundingClientRect();
+    const leftEdgeEnd = rect.left + edgeThreshold;
+    const rightEdgeStart = rect.right - edgeThreshold;
+
+    const isOnLeftEdge = clientX < leftEdgeEnd && currentPage > 0;
+    const isOnRightEdge = clientX > rightEdgeStart && currentPage < totalPages - 1;
+
+    if (isOnLeftEdge) {
+        // Show highlight when entering edge zone
+        gridWrapper.classList.add('edge-highlight-left');
+        gridWrapper.classList.remove('edge-highlight-right');
+
+        if (lastEdgeSide !== 'left') {
+            // Just entered left edge (or re-entered after page switch), start timing
+            lastEdgeSide = 'left';
+            edgeHoverStartTime = now;
+        } else if (!grid._animating && edgeHoverStartTime && now - edgeHoverStartTime >= hoverDelay) {
+            // Hovering for 500ms and not animating, trigger page switch
             setPage(ctx, currentPage - 1, { animate: true, direction: 'prev' });
-            lastPageSwitchTime = now;
-        } else if (clientX > window.innerWidth - edgeThreshold && currentPage < totalPages - 1) {
-            // Next page
-            const grid = document.querySelector('.grid-wrapper');
-            grid?.classList.add('edge-highlight-right');
-            setTimeout(() => grid?.classList.remove('edge-highlight-right'), 1000);
-
-            setPage(ctx, currentPage + 1, { animate: true, direction: 'next' });
-            lastPageSwitchTime = now;
+            // Reset state so next detection treats it as fresh entry (re-flash highlight, restart timer)
+            lastEdgeSide = null;
+            edgeHoverStartTime = null;
+            gridWrapper.classList.remove('edge-highlight-left');
         }
+    } else if (isOnRightEdge) {
+        // Show highlight when entering edge zone
+        gridWrapper.classList.add('edge-highlight-right');
+        gridWrapper.classList.remove('edge-highlight-left');
+
+        if (lastEdgeSide !== 'right') {
+            // Just entered right edge (or re-entered after page switch), start timing
+            lastEdgeSide = 'right';
+            edgeHoverStartTime = now;
+        } else if (!grid._animating && edgeHoverStartTime && now - edgeHoverStartTime >= hoverDelay) {
+            // Hovering for 500ms and not animating, trigger page switch
+            setPage(ctx, currentPage + 1, { animate: true, direction: 'next' });
+            // Reset state so next detection treats it as fresh entry (re-flash highlight, restart timer)
+            lastEdgeSide = null;
+            edgeHoverStartTime = null;
+            gridWrapper.classList.remove('edge-highlight-right');
+        }
+    } else {
+        // Left edge zone, clear highlight and reset state
+        gridWrapper.classList.remove('edge-highlight-left', 'edge-highlight-right');
+        lastEdgeSide = null;
+        edgeHoverStartTime = null;
     }
 }
 
