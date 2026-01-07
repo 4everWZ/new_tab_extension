@@ -569,8 +569,8 @@ export function renderGrid(ctx) {
 
     // Only render actual apps
     pageApps.forEach((app, index) => {
-
-        const realIndex = start + index;
+        // Find the real index in the original allApps array (handles null gaps)
+        const realIndex = allApps.indexOf(app);
         const item = document.createElement('a');
         item.href = isEditMode ? 'javascript:void(0)' : app.url;
         item.className = 'app-item';
