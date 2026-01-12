@@ -772,36 +772,9 @@ export function editAppIcon(ctx, index) {
             displayUrl = '';
         }
 
-        const iconOption = document.createElement('div');
-        iconOption.className = 'icon-option';
-        iconOption.dataset.type = 'icon';
-        iconOption.dataset.style = 'icon1';
-        iconOption.dataset.url = app.img; // Keep IDB ref for logic
-        iconOption.style.cssText = `padding: 12px; border: 2px solid ${isSelected ? '#4285F4' : '#ddd'}; border-radius: 8px; text-align: center; cursor: pointer; background: ${isSelected ? '#f0f7ff' : '#fff'};`;
 
-        const previewDiv = document.createElement('div');
-        previewDiv.style.cssText = `width: 60px; height: 60px; aspect-ratio: 1; border-radius: ${ctx.state.settings.iconRadius || 50}%; background-color: ${bgColor}; background-size: cover; background-position: center; margin: 0 auto 8px; border: 1px solid #eee;`;
-
-        if (app.img.startsWith('idb://')) {
-            const key = app.img.split('/').pop();
-            db.get(STORES_CONSTANTS.FAVICONS, key).then(blob => {
-                if (blob instanceof Blob) {
-                    previewDiv.style.backgroundImage = `url(${URL.createObjectURL(blob)})`;
-                }
-            });
-        } else {
-            previewDiv.style.backgroundImage = `url(${app.img})`;
-        }
-
-        iconOption.appendChild(previewDiv);
-        iconOption.innerHTML += `<div style="font-size: 12px; color: #666;">图标A</div>`;
-
-        // iconOptionsHTML += iconOption.outerHTML; // Fails to attach events/async style
-        // We must append to container later. 
-        // For now let's use the string approach but handle async separately? 
-        // Refactoring to DOM creation is safer.
-
-        // Let's stick to string but use a unique class to target it.
+        // Let's use the string approach but handle async separately
+        // Stick to string but use a unique class to target it.
         const headerId = 'icon-preview-' + Date.now();
         iconOptionsHTML += `
             <div class="icon-option ${headerId}" data-type="icon" data-style="icon1" data-url="${app.img}" style="padding: 12px; border: 2px solid ${isSelected ? '#4285F4' : '#ddd'}; border-radius: 8px; text-align: center; cursor: pointer; background: ${isSelected ? '#f0f7ff' : '#fff'};">
@@ -813,11 +786,27 @@ export function editAppIcon(ctx, index) {
         // Async update
         if (app.img.startsWith('idb://')) {
             const key = app.img.split('/').pop();
-            db.get(STORES_CONSTANTS.FAVICONS, key).then(blob => {
+            db.get(STORES_CONSTANTS.FAVICONS, key).then(data => {
                 const els = document.getElementsByClassName(headerId);
-                if (els.length > 0 && blob instanceof Blob) {
-                    const p = els[0].querySelector('.preview-img');
-                    if (p) p.style.backgroundImage = `url(${URL.createObjectURL(blob)})`;
+                let url = '';
+                if (data instanceof Blob) {
+                    url = URL.createObjectURL(data);
+                } else if (typeof data === 'string') {
+                    url = data;
+                }
+
+                if (url) {
+                    if (els.length > 0) {
+                        const p = els[0].querySelector('.preview-img');
+                        if (p) {
+                            p.style.backgroundImage = `url(${url})`;
+                        }
+                    }
+                    // Also update main preview if it exists
+                    const mainPreview = document.getElementById('icon-preview');
+                    if (mainPreview) {
+                        mainPreview.style.backgroundImage = `url(${url})`;
+                    }
                 }
             });
         } else {
@@ -857,7 +846,7 @@ export function editAppIcon(ctx, index) {
         <h2 style="margin: 0 0 20px; font-size: 18px; color: #333;">编辑图标</h2>
 
         <div style="margin-bottom: 20px;">
-            <div style="width: 100px; height: 100px; aspect-ratio: 1; border-radius: ${ctx.state.settings.iconRadius || 50}%; background: ${currentIconType === 'icon' && app.isTransparent ? 'transparent' : (app.color || '#ccc')}; margin: 0 auto 16px; background-image: url(${app.img || ''}); background-size: cover; background-position: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 32px;" id="icon-preview">
+            <div style="width: 100px; height: 100px; aspect-ratio: 1; border-radius: ${ctx.state.settings.iconRadius || 50}%; background: ${currentIconType === 'icon' && app.isTransparent ? 'transparent' : (app.color || '#ccc')}; margin: 0 auto 16px; background-image: url(${!app.img || app.img.startsWith('idb://') ? '' : app.img}); background-size: cover; background-position: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 32px;" id="icon-preview">
                 ${currentIconType === 'color' ? (app.text || app.name[0]) : ''}
             </div>
         </div>
@@ -966,7 +955,22 @@ export function editAppIcon(ctx, index) {
             iconPreview.style.backgroundColor = '#f0f0f0';
             iconPreview.innerText = '';
         } else if (selectedIconType === 'icon') {
-            iconPreview.style.backgroundImage = `url(${selectedFaviconUrl})`;
+            if (selectedFaviconUrl.startsWith('idb://')) {
+                const key = selectedFaviconUrl.split('/').pop();
+                db.get(STORES_CONSTANTS.FAVICONS, key).then(data => {
+                    let url = '';
+                    if (data instanceof Blob) {
+                        url = URL.createObjectURL(data);
+                    } else if (typeof data === 'string') {
+                        url = data;
+                    }
+                    if (url) {
+                        iconPreview.style.backgroundImage = `url(${url})`;
+                    }
+                });
+            } else {
+                iconPreview.style.backgroundImage = `url(${selectedFaviconUrl})`;
+            }
             iconPreview.style.backgroundSize = 'cover';
             iconPreview.style.backgroundPosition = 'center';
             iconPreview.innerText = '';

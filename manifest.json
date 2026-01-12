@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "My Safe New Tab",
+  "name": "CleanSlateTab",
   "version": "1.0",
   "description": "简约、本地、无联网的自用新标签页",
   "chrome_url_overrides": {
