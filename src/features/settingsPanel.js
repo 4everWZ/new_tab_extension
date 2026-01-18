@@ -1,4 +1,4 @@
-import { compressImage, dataURLToBlob } from '../utils/images.js';
+import { compressImage, dataURLToBlob, blobToDataUrl } from '../utils/images.js';
 import { loadWallpaper, displayWallpaper } from './wallpaper.js';
 import { db, STORES_CONSTANTS } from '../utils/db.js';
 
