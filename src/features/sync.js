@@ -180,7 +180,8 @@ export async function syncDownload(ctx, mode = 'overwrite') { // mode: 'overwrit
 
     updateStatus('Downloading configuration...');
 
-    // 1. Download settings.json
+    updateStatus('Requesting settings.json from WebDAV...');
+    console.log('[Sync] calling client.download(settings.json)');
     const remoteData = await client.download('settings.json');
     if (!remoteData) throw new Error('Remote settings.json not found');
 
@@ -190,12 +191,12 @@ export async function syncDownload(ctx, mode = 'overwrite') { // mode: 'overwrit
             settings: { ...ctx.state.settings },
             apps: ctx.state.allApps.filter(a => a)
         };
-        // We'd need to exclude creds to match canonical?
         delete currentPayload.settings.webdavUrl;
         delete currentPayload.settings.webdavUsername;
         delete currentPayload.settings.webdavPassword;
 
         const localHash = await computePayloadHash(currentPayload);
+
         if (localHash === remoteData.payloadHash) {
             updateStatus('Already up to date.');
             return;
@@ -232,8 +233,10 @@ export async function syncDownload(ctx, mode = 'overwrite') { // mode: 'overwrit
                 neededBinaries.push({ name: `favicon_${id}.png`, store: 'favicon', key: id });
                 neededBinaries.push({ name: `favicon_${id}.bin`, store: 'favicon', key: id });
                 neededBinaries.push({ name: `favicon_${id}.ico`, store: 'favicon', key: id });
-                // Legacy
-                if (id.length > 50) return; // Hash is 64 hex chars. UUID is 36.
+                // ID is hash (64 chars) or UUID (36 chars)
+                // If it's absurdly long (legacy data URI leak?), maybe skip.
+                // But definitely DO NOT return from function.
+                if (id.length > 100) continue;
             }
         }
     }
@@ -251,16 +254,22 @@ export async function syncDownload(ctx, mode = 'overwrite') { // mode: 'overwrit
     // Hash-based ID means: if we have IDB key, we have content!
 
     const uniqueAssets = new Map(); // key -> { possibleNames... }
+
     for (const item of neededBinaries) {
         if (item.store === 'favicon') {
             // Check local IDB first
-            const exists = await db.get(STORES_CONSTANTS.FAVICONS, item.key);
-            // If exists is string "[object Blob]", we must kill it and re-download!
-            if (typeof exists === 'string' && exists.includes('[object Blob]')) {
-                await db.delete(STORES_CONSTANTS.FAVICONS, item.key);
-                // proceed to download
-            } else if (exists) {
-                continue; // Skip download!
+            try {
+                // console.log(`[Sync] Checking IDB: ${item.key}`);
+                const exists = await db.get(STORES_CONSTANTS.FAVICONS, item.key);
+                // If exists is string "[object Blob]", we must kill it and re-download!
+                if (typeof exists === 'string' && exists.includes('[object Blob]')) {
+                    await db.delete(STORES_CONSTANTS.FAVICONS, item.key);
+                    // proceed to download
+                } else if (exists) {
+                    continue; // Skip download!
+                }
+            } catch (err) {
+                console.error('[Sync] IDB Check Error:', err);
             }
         }
         // Wallpaper always re-download? Hash check would be nice but wallpaper key is 'local' (fixed).

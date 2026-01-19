@@ -18,6 +18,7 @@ async function handleWebDAVRequest(data) {
         const fetchOptions = {
             method,
             headers,
+            cache: 'no-store'
         };
 
         if (body) {
@@ -32,7 +33,16 @@ async function handleWebDAVRequest(data) {
             }
         }
 
-        const response = await fetch(url, fetchOptions);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), data.timeout || 30000); // Default 30s timeout
+        fetchOptions.signal = controller.signal;
+
+        let response;
+        try {
+            response = await fetch(url, fetchOptions);
+        } finally {
+            clearTimeout(timeoutId);
+        }
 
         let responseData;
 

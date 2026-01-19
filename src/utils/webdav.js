@@ -39,26 +39,59 @@ export class WebDAVClient {
             }
         }
 
-        const response = await chrome.runtime.sendMessage({
+        const messageData = {
             type: 'webdav_proxy',
             url: this.url + filename,
             method,
             headers,
             body: payloadBody,
-            isBinary: isPayloadBinary || isBinary // Allow forcing binary response even for GET
+            isBinary: isPayloadBinary || isBinary,
+            timeout: 30000
+        };
+
+        const sendMessagePromise = new Promise((resolve, reject) => {
+            try {
+                chrome.runtime.sendMessage(messageData, (response) => {
+                    if (chrome.runtime.lastError) {
+                        console.error('[WebDAV] Runtime Error:', chrome.runtime.lastError);
+                        reject(new Error(chrome.runtime.lastError.message));
+                    } else {
+                        resolve(response);
+                    }
+                });
+            } catch (e) {
+                console.error('[WebDAV] sendMessage threw:', e);
+                reject(e);
+            }
         });
 
-        if (!response.success) {
-            throw new Error(response.error);
-        }
+        let timeoutId;
+        const timeoutPromise = new Promise((_, reject) => {
+            timeoutId = setTimeout(() => {
+                console.error('[WebDAV] Client Timeout Triggered!');
+                reject(new Error('Request timed out (Client)'));
+            }, 35000);
+        });
 
-        // Convert base64 response back to Blob if requested
-        if (isBinary && typeof response.data === 'string' && response.data.startsWith('data:')) {
-            const res = await fetch(response.data);
-            response.data = await res.blob();
-        }
+        try {
+            const response = await Promise.race([sendMessagePromise, timeoutPromise]);
+            clearTimeout(timeoutId);
 
-        return response;
+            if (!response || !response.success) {
+                throw new Error(response ? response.error : 'Unknown error');
+            }
+
+            // Convert base64 response back to Blob if requested
+            if (isBinary && typeof response.data === 'string' && response.data.startsWith('data:')) {
+                const res = await fetch(response.data);
+                response.data = await res.blob();
+            }
+
+            return response;
+        } catch (e) {
+            console.error('[WebDAV] _request failed caught:', e);
+            throw e;
+        }
     }
 
     async checkConnection() {
