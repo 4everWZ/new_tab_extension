@@ -1,5 +1,5 @@
 import { getFaviconUrl } from '../utils/favicon.js';
-import { checkImageTransparency, convertImageToDataUrl, dataURLToBlob, fetchImageBlob } from '../utils/images.js';
+import { checkImageTransparency, convertImageToDataUrl, dataURLToBlob, fetchImageBlob, compressImage } from '../utils/images.js';
 
 import { db, STORES_CONSTANTS } from '../utils/db.js';
 
@@ -173,18 +173,21 @@ async function applyImageIcon(ctx, iconEl, app, { defaultBg = '#f0f0f0' } = {}) 
                 const cached = await convertImageToDataUrl(url);
                 if (cached && cached.startsWith('data:') && app.img === url) {
                     // SAVE TO IDB
-                    const blob = dataURLToBlob(cached);
+                    // Compress/Resize before saving to save space (128px limit)
+                    const compressedDataUrl = await compressImage(cached, { maxWidth: 128, quality: 0.8 });
+                    const blob = dataURLToBlob(compressedDataUrl);
+
                     const id = await computeContentHash(blob); // ID is now Hash
 
                     // Check if already exists? (Get optional but set overwrites same content so safe)
                     await db.set(STORES_CONSTANTS.FAVICONS, id, blob);
                     app.img = `idb://favicons/${id}`;
                     app.iconType = app.iconType || 'icon';
-                    app.isTransparent = await checkImageTransparency(cached);
+                    app.isTransparent = await checkImageTransparency(compressedDataUrl);
                     ctx.actions.saveApps();
 
                     // Update UI
-                    iconEl.style.backgroundImage = `url(${cached})`;
+                    iconEl.style.backgroundImage = `url(${compressedDataUrl})`;
                 }
             } finally {
                 _iconCacheInFlight.delete(url);

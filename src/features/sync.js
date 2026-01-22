@@ -282,35 +282,52 @@ export async function syncDownload(ctx, mode = 'overwrite') { // mode: 'overwrit
 
     const assetsToFetch = Array.from(uniqueAssets.values());
 
+    // Optimization: Get remote file list once to avoid guessing extensions
+    updateStatus('Fetching remote file list...');
+    const remoteFiles = await client.getDirectoryContents('/');
+    const remoteFileMap = new Map(); // key (hash/id) -> filename
+
+    if (remoteFiles && remoteFiles.length > 0) {
+        remoteFiles.forEach(filename => {
+            if (filename.startsWith('favicon_')) {
+                // filename: favicon_HASH.ext
+                const match = filename.match(/^favicon_(.+)(\.[^.]+)$/);
+                if (match) {
+                    remoteFileMap.set(match[1], filename);
+                }
+            } else if (filename.startsWith('wallpaper_local')) {
+                remoteFileMap.set('local', filename);
+            }
+        });
+        console.log(`[Sync] Built remote file map with ${remoteFileMap.size} entries.`);
+    }
+
     for (const item of assetsToFetch) {
         updateStatus(`Downloading assets (${downloadedCount + 1}/${assetsToFetch.length})...`);
 
         let content = null;
-        // Try names
-        const namesToTry = [item.name];
-        // Logic to populate namesToTry based on item? 
-        // We pushed multiple variants above, but map deduped by key. 
-        // Let's simplify: try strict logic.
-
-        // Actually, let's just loop names associated with key if we grouped them.
-        // Current logic above pushed multiple items with same key.
-        // 'uniqueAssets' only kept LAST one. Bad.
-
-        // Fix: Just loop original neededBinaries, check IDB, if missing, try download.
-        // If download fails, try next variant?
-        // This is getting complex.
-        // V2 Simplified: Just try `favicon_${id}.png` then `.bin`.
+        const preciseFilename = remoteFileMap.get(item.key);
 
         try {
-            // Try defaults
-            // NOTE: WebDAV Client 'download' returns null on 404
-            if (item.store === 'wallpaper') {
-                content = await client.download('wallpaper_local.png', true) ||
-                    await client.download('wallpaper_local.jpeg', true) ||
-                    await client.download('wallpaper_local.bin', true);
+            if (preciseFilename) {
+                console.log(`[Sync] Downloading precise file: ${preciseFilename}`);
+                content = await client.download(preciseFilename, true);
             } else {
-                content = await client.download(`favicon_${item.key}.png`, true) ||
-                    await client.download(`favicon_${item.key}.bin`, true);
+                // Fallback: IF PROPFIND failed or map empty, try standard extensions (Legacy/Safety)
+                if (!remoteFiles || remoteFiles.length === 0) {
+                    console.log(`[Sync] Fallback guessing for ${item.key}`);
+                    if (item.store === 'wallpaper') {
+                        content = await client.download('wallpaper_local.png', true) ||
+                            await client.download('wallpaper_local.jpeg', true) ||
+                            await client.download('wallpaper_local.bin', true);
+                    } else {
+                        content = await client.download(`favicon_${item.key}.png`, true) ||
+                            await client.download(`favicon_${item.key}.bin`, true) ||
+                            await client.download(`favicon_${item.key}.ico`, true);
+                    }
+                } else {
+                    console.warn(`[Sync] Asset ${item.key} not found in remote file list.`);
+                }
             }
 
             if (content) {
@@ -383,6 +400,7 @@ export async function syncDownload(ctx, mode = 'overwrite') { // mode: 'overwrit
 
     applySettings(ctx);
     await loadWallpaper(ctx); // Reload wallpaper
+    render(ctx); // Re-render grid to show new icons instantly without refresh
 
     updateStatus(`Sync complete! (${new Date().toLocaleTimeString()})`);
 }

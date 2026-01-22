@@ -134,4 +134,54 @@ export class WebDAVClient {
             throw e;
         }
     }
+    async getDirectoryContents(path = '') {
+        try {
+            // Ensure path starts/ends correctly if needed, but standard WebDAV is usually tolerant.
+            // PROPFIND Depth: 1
+            const response = await this._request('PROPFIND', path, null, {
+                'Depth': '1',
+                'Content-Type': 'application/xml'
+            });
+
+            if (response.status >= 300) {
+                console.warn('[WebDAV] PROPFIND failed:', response.status);
+                return [];
+            }
+
+            // Parse XML response
+            // We need to handle the response body which might be a string (XML)
+            const xmlText = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(xmlText, "text/xml");
+
+            const responses = xmlDoc.getElementsByTagNameNS("DAV:", "response");
+            const files = [];
+
+            for (let i = 0; i < responses.length; i++) {
+                const resp = responses[i];
+                const hrefNode = resp.getElementsByTagNameNS("DAV:", "href")[0];
+                const propNode = resp.getElementsByTagNameNS("DAV:", "propstat")[0]?.getElementsByTagNameNS("DAV:", "prop")[0];
+                const resTypeNode = propNode?.getElementsByTagNameNS("DAV:", "resourcetype")[0];
+
+                // Check if collection (directory)
+                const isCollection = resTypeNode?.getElementsByTagNameNS("DAV:", "collection").length > 0;
+
+                if (!isCollection && hrefNode) {
+                    let href = hrefNode.textContent;
+                    // Decode URI just in case
+                    try { href = decodeURIComponent(href); } catch { }
+
+                    // Extract basename
+                    const basename = href.split('/').pop();
+                    if (basename) files.push(basename);
+                }
+            }
+
+            console.log('[WebDAV] Directory listing:', files);
+            return files;
+        } catch (e) {
+            console.error('[WebDAV] getDirectoryContents failed:', e);
+            return [];
+        }
+    }
 }

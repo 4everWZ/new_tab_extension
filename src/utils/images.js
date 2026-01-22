@@ -1,7 +1,7 @@
 // Image helpers extracted from legacy script.js
 
 // Compress a dataURL image so it fits comfortably under chrome.storage.local quota.
-export function compressImage(dataUrl, maxSize = 8 * 1024 * 1024) {
+export function compressImage(dataUrl, { maxSize = 8 * 1024 * 1024, maxWidth = null, maxHeight = null, quality = 0.85 } = {}) {
     return new Promise((resolve) => {
         const img = new Image();
         img.onload = () => {
@@ -10,35 +10,50 @@ export function compressImage(dataUrl, maxSize = 8 * 1024 * 1024) {
 
             let width = img.width;
             let height = img.height;
-            let quality = 0.85;
+            let currentQuality = quality;
             let result = null;
+
+            // Initial resize logic if max dimensions are provided
+            if (maxWidth || maxHeight) {
+                const ratio = width / height;
+                if (maxWidth && width > maxWidth) {
+                    width = maxWidth;
+                    height = width / ratio;
+                }
+                if (maxHeight && height > maxHeight) {
+                    height = maxHeight;
+                    width = height * ratio;
+                }
+            }
 
             canvas.width = width;
             canvas.height = height;
-            ctx.drawImage(img, 0, 0);
-            result = canvas.toDataURL('image/jpeg', quality);
+            ctx.drawImage(img, 0, 0, width, height);
+            result = canvas.toDataURL('image/jpeg', currentQuality);
 
-            console.log(`[Compress] Initial size: ${(result.length / 1024 / 1024).toFixed(2)}MB`);
+            console.log(`[Compress] Initial size: ${(result.length / 1024 / 1024).toFixed(4)}MB, ${width}x${height}`);
 
-            while (result.length > maxSize && quality > 0.3) {
-                quality -= 0.1;
-                result = canvas.toDataURL('image/jpeg', quality);
-                console.log(`[Compress] After quality ${quality.toFixed(2)}: ${(result.length / 1024 / 1024).toFixed(2)}MB`);
+            // Iterative quality reduction if still over size
+            while (result.length > maxSize && currentQuality > 0.3) {
+                currentQuality -= 0.1;
+                result = canvas.toDataURL('image/jpeg', currentQuality);
+                console.log(`[Compress] Quality ${currentQuality.toFixed(2)}: ${(result.length / 1024 / 1024).toFixed(4)}MB`);
             }
 
-            while (result.length > maxSize && width > 800) {
+            // Iterative resize if STRUGGLING to fit size (fallback)
+            while (result.length > maxSize && width > 128) { // Aggressive fallback
                 width = Math.floor(width * 0.8);
                 height = Math.floor(height * 0.8);
                 canvas.width = width;
                 canvas.height = height;
                 ctx.drawImage(img, 0, 0, width, height);
-                result = canvas.toDataURL('image/jpeg', quality);
-                console.log(`[Compress] After resize to ${width}x${height}: ${(result.length / 1024 / 1024).toFixed(2)}MB`);
+                result = canvas.toDataURL('image/jpeg', currentQuality);
+                console.log(`[Compress] Resize fallback ${width}x${height}: ${(result.length / 1024 / 1024).toFixed(4)}MB`);
             }
 
-            const originalSize = (dataUrl.length / 1024 / 1024).toFixed(2);
-            const compressedSize = (result.length / 1024 / 1024).toFixed(2);
-            console.log(`[Compress] ✓ Image compressed: ${originalSize}MB → ${compressedSize}MB (${Math.round((compressedSize / originalSize) * 100)}%)`);
+            const originalSize = (dataUrl.length / 1024 / 1024).toFixed(4);
+            const compressedSize = (result.length / 1024 / 1024).toFixed(4);
+            console.log(`[Compress] ✓ Done: ${originalSize}MB → ${compressedSize}MB`);
             resolve(result);
         };
         img.onerror = () => {
